@@ -1,0 +1,26 @@
+# Quarto and generated files
+.history/
+.quarto/
+_output/
+*.html
+*.log
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fls
+*.fdb_latexmk
+*.nav
+*.out
+*.snm
+*.toc
+*.vrb
+
+# Application papers and other local reference PDFs
+Application/
+*.pdf
+!Lecture slides/
+!Lecture slides/*.pdf
+
+# Local documents
+*.docx
