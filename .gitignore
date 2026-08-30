@@ -24,3 +24,6 @@ Application/
 
 # Local documents
 *.docx
+
+# NLSY public-use data (download locally; do not commit)
+data/
