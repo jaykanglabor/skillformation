@@ -1,0 +1,658 @@
+---
+title: "From a CES Benchmark to the AW Estimator"
+author: "Child Skill Formation"
+date: "2026-09-01"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  message = FALSE,
+  warning = FALSE,
+  fig.width = 7,
+  fig.height = 4.5
+)
+
+set.seed(20260901)
+options(width = 100)
+library(knitr)
+```
+
+# Purpose
+
+This notebook is a **didactic implementation**, not a replication of
+Agostinelli and Wiswall. It begins with a simple CES production function
+where the latent inputs are observed. It then introduces measurement error
+and finishes with a small translog-IV exercise inspired by AW.
+
+The basic sequence is:
+
+1. Estimate a CES benchmark.
+2. Add noisy measures of latent skills and investments.
+3. Show the measurement-error problem.
+4. Use alternative measures as internal instruments.
+5. Estimate a translog skill-formation equation.
+
+# 1. CES benchmark with observed inputs
+
+Consider a one-skill, one-investment CES technology:
+
+$$
+\theta_{t+1}
+=
+A
+\left[
+\gamma\theta_t^\rho
++(1-\gamma)I_t^\rho
+\right]^{1/\rho}
+\exp(\eta_{t+1}).
+$$
+
+Here, \(\rho\) controls the curvature of the CES aggregator. The limiting
+case \(\rho\rightarrow 0\) is Cobb--Douglas, while \(\rho=1\) gives perfect
+substitutes.
+
+## Simulate latent data
+
+```{r simulate-ces}
+n <- 4000
+
+theta_t <- exp(rnorm(n, mean = 0, sd = 0.70))
+
+log_I_t <- 0.20 +
+  0.40 * log(theta_t) +
+  rnorm(n, mean = 0, sd = 0.60)
+
+I_t <- exp(log_I_t)
+
+A_true <- 1.10
+gamma_true <- 0.65
+rho_true <- -0.50
+
+eta_t1 <- rnorm(n, mean = 0, sd = 0.08)
+
+theta_t1 <- A_true *
+  (
+    gamma_true * theta_t^rho_true +
+      (1 - gamma_true) * I_t^rho_true
+  )^(1 / rho_true) *
+  exp(eta_t1)
+
+ces_data <- data.frame(
+  theta_t = theta_t,
+  I_t = I_t,
+  theta_t1 = theta_t1
+)
+```
+
+## Estimate the CES parameters
+
+Because the latent inputs are observed in this first exercise, we can estimate
+the production function directly by nonlinear least squares.
+
+```{r estimate-ces}
+ces_fit <- nls(
+  theta_t1 ~ A *
+    (
+      gamma * theta_t^rho +
+        (1 - gamma) * I_t^rho
+    )^(1 / rho),
+  data = ces_data,
+  start = list(A = 1.0, gamma = 0.60, rho = -0.40),
+  algorithm = "port",
+  lower = c(A = 0.01, gamma = 0.001, rho = -5),
+  upper = c(A = 10.0, gamma = 0.999, rho = 0.99)
+)
+
+ces_estimates <- data.frame(
+  Parameter = c("A", "gamma", "rho"),
+  True = c(A_true, gamma_true, rho_true),
+  Estimate = coef(ces_fit)
+)
+
+kable(ces_estimates, digits = 3)
+```
+
+```{r ces-fit-plot}
+ces_data$fitted <- predict(ces_fit)
+
+plot(
+  log(ces_data$theta_t1),
+  log(ces_data$fitted),
+  pch = 16,
+  col = rgb(35, 78, 112, 90, maxColorValue = 255),
+  xlab = "Log true next-period skill",
+  ylab = "Log fitted next-period skill",
+  main = "CES benchmark: fitted versus simulated outcome"
+)
+abline(0, 1, lwd = 2, col = "firebrick")
+```
+
+At this point, the exercise is only about the production function. There is
+no latent-factor problem and no IV problem yet.
+
+# 2. Add measurement error
+
+Now suppose that skill and investment are latent. We observe several noisy
+measures:
+
+$$
+Z_{\theta,m}
+=
+\mu_{\theta,m}
++
+\lambda_{\theta,m}\ln\theta_t
++
+\varepsilon_{\theta,m},
+$$
+
+$$
+Z_{I,m}
+=
+\mu_{I,m}
++
+\lambda_{I,m}\ln I_t
++
+\varepsilon_{I,m}.
+$$
+
+For the demonstration, the first measure of each factor is normalized to
+have loading one. The measurement errors are generated independently across
+measures.
+
+## Simulate latent variables and noisy measures
+
+```{r simulate-measures}
+n <- 4000
+
+log_theta_0 <- rnorm(n, mean = 0, sd = 0.70)
+
+log_I_0 <- 0.25 +
+  0.35 * log_theta_0 +
+  rnorm(n, mean = 0, sd = 0.50)
+
+# A translog skill-formation technology used for the AW part.
+b0_true <- 0.10
+b1_true <- 0.55
+b2_true <- 0.25
+b3_true <- -0.10
+
+log_theta_1 <- b0_true +
+  b1_true * log_theta_0 +
+  b2_true * log_I_0 +
+  b3_true * log_theta_0 * log_I_0 +
+  rnorm(n, mean = 0, sd = 0.20)
+
+make_measures <- function(
+    x,
+    loadings,
+    error_sd,
+    prefix
+) {
+  out <- sapply(
+    seq_along(loadings),
+    function(j) {
+      loadings[j] * x +
+        rnorm(length(x), mean = 0, sd = error_sd[j])
+    }
+  )
+  out <- as.data.frame(out)
+  names(out) <- paste0(prefix, seq_along(loadings))
+  out
+}
+
+theta_0_measures <- make_measures(
+  x = log_theta_0,
+  loadings = c(1.00, 0.80, 1.20),
+  error_sd = c(0.35, 0.45, 0.30),
+  prefix = "Z_theta0_"
+)
+
+I_0_measures <- make_measures(
+  x = log_I_0,
+  loadings = c(1.00, 0.90, 1.15),
+  error_sd = c(0.40, 0.50, 0.35),
+  prefix = "Z_I0_"
+)
+
+theta_1_measures <- make_measures(
+  x = log_theta_1,
+  loadings = c(1.00, 0.85, 1.10),
+  error_sd = c(0.35, 0.45, 0.30),
+  prefix = "Z_theta1_"
+)
+
+measure_data <- cbind(
+  theta_0_measures,
+  I_0_measures,
+  theta_1_measures
+)
+```
+
+## Recover loadings from covariance ratios
+
+With three measures and an anchor loading normalized to one, the covariance
+restrictions are
+
+$$
+\operatorname{Cov}(Z_1,Z_2)
+=
+\lambda_2\operatorname{Var}(X),
+$$
+
+$$
+\operatorname{Cov}(Z_1,Z_3)
+=
+\lambda_3\operatorname{Var}(X),
+$$
+
+$$
+\operatorname{Cov}(Z_2,Z_3)
+=
+\lambda_2\lambda_3\operatorname{Var}(X).
+$$
+
+For example,
+
+$$
+\lambda_2
+=
+\frac{\operatorname{Cov}(Z_2,Z_3)}
+{\operatorname{Cov}(Z_1,Z_3)}.
+$$
+
+The following function implements this simple covariance-ratio calculation.
+
+```{r recover-factor}
+recover_factor <- function(z, anchor = 1) {
+  z <- as.data.frame(z)
+  C <- cov(z)
+  m <- ncol(z)
+
+  loadings <- rep(NA_real_, m)
+  loadings[anchor] <- 1
+
+  non_anchor <- setdiff(seq_len(m), anchor)
+
+  for (j in non_anchor) {
+    comparison_measure <- setdiff(non_anchor, j)[1]
+    loadings[j] <-
+      C[j, comparison_measure] /
+      C[anchor, comparison_measure]
+  }
+
+  factor_variance <- mean(
+    C[anchor, non_anchor] / loadings[non_anchor]
+  )
+
+  factor_mean <- colMeans(z)
+
+  measurement_variance <- pmax(
+    diag(C) - loadings^2 * factor_variance,
+    0
+  )
+
+  residual_measures <- sweep(
+    sweep(as.matrix(z), 2, factor_mean, "-"),
+    2,
+    loadings,
+    "/"
+  )
+
+  residual_measures <- as.data.frame(residual_measures)
+  names(residual_measures) <- names(z)
+
+  list(
+    loadings = loadings,
+    factor_variance = factor_variance,
+    factor_mean = factor_mean,
+    measurement_variance = measurement_variance,
+    residual_measures = residual_measures
+  )
+}
+
+theta_0_factor <- recover_factor(theta_0_measures)
+I_0_factor <- recover_factor(I_0_measures)
+
+loading_table <- rbind(
+  CognitiveSkill = theta_0_factor$loadings,
+  Investment = I_0_factor$loadings
+)
+
+colnames(loading_table) <- c("Measure 1", "Measure 2", "Measure 3")
+kable(loading_table, digits = 3)
+```
+
+The recovered residual measure has the form
+
+$$
+\widetilde Z_{\theta,m}
+=
+\ln\theta_t
++
+\frac{\varepsilon_{\theta,m}}{\lambda_{\theta,m}}.
+$$
+
+It is therefore a better-scaled proxy, but it is still noisy.
+
+# 3. Why naive OLS is problematic
+
+Consider the investment equation
+
+$$
+\ln I_i
+=
+a_0+a_1\ln\theta_i+\eta_i.
+$$
+
+If we regress a noisy skill proxy on a noisy investment proxy, the
+measurement error in the skill proxy enters the regression residual.
+Consequently, the regressor is correlated with the regression error.
+
+```{r naive-investment}
+theta_proxy <- theta_0_factor$residual_measures$Z_theta0_1
+theta_alternative <- theta_0_factor$residual_measures$Z_theta0_2
+
+investment_proxy <- I_0_factor$residual_measures$Z_I0_1
+
+naive_investment_fit <- lm(
+  investment_proxy ~ theta_proxy
+)
+
+# A simple repeated-measure IV:
+# use an alternative skill measure as an instrument.
+investment_first_stage <- lm(
+  theta_proxy ~ theta_alternative
+)
+
+theta_hat <- fitted(investment_first_stage)
+
+iv_investment_fit <- lm(
+  investment_proxy ~ theta_hat
+)
+
+investment_comparison <- data.frame(
+  Method = c("True", "Naive OLS", "Repeated-measure IV"),
+  Coefficient_on_skill = c(
+    0.35,
+    coef(naive_investment_fit)[["theta_proxy"]],
+    coef(iv_investment_fit)[["theta_hat"]]
+  )
+)
+
+kable(investment_comparison, digits = 3)
+```
+
+The internal IV works because the alternative measure is correlated with the
+true skill but, under the measurement-error assumptions, is uncorrelated with
+the measurement error in the main skill measure.
+
+This is not an external policy IV. It is a repeated-measure IV for an
+errors-in-variables problem.
+
+# 4. A small AW-style translog exercise
+
+The AW translog technology can be written as
+
+$$
+\ln\theta_{t+1}
+=
+\beta_{0,t}
++
+\beta_{1,t}\ln\theta_t
++
+\beta_{2,t}\ln I_t
++
+\beta_{3,t}
+\ln\theta_t\ln I_t
++
+u_{t+1}.
+$$
+
+The coefficient \(\beta_{3,t}\) is the log cross-partial:
+
+$$
+\frac{\partial^2\ln\theta_{t+1}}
+{\partial\ln\theta_t\,\partial\ln I_t}
+=
+\beta_{3,t}.
+$$
+
+In the simulated data, the true parameter values are:
+
+```{r true-aw-parameters}
+true_aw <- data.frame(
+  Parameter = c(
+    "Intercept",
+    "Current skill",
+    "Investment",
+    "Skill-investment interaction"
+  ),
+  True = c(b0_true, b1_true, b2_true, b3_true)
+)
+
+kable(true_aw, digits = 3)
+```
+
+## Construct noisy regressors and instruments
+
+For this simple demonstration:
+
+- the main skill proxy is \(Z_{\theta,1}\);
+- the main investment proxy is \(Z_{I,1}\);
+- the alternative skill and investment measures are \(Z_{\theta,2}\)
+  and \(Z_{I,2}\);
+- the interaction of the alternative measures instruments the interaction
+  of the main measures.
+
+```{r construct-aw-data}
+aw_data <- data.frame(
+  outcome = theta_1_measures$Z_theta1_1,
+  skill_proxy = theta_0_factor$residual_measures$Z_theta0_1,
+  investment_proxy = I_0_factor$residual_measures$Z_I0_1,
+  skill_instrument = theta_0_factor$residual_measures$Z_theta0_2,
+  investment_instrument = I_0_factor$residual_measures$Z_I0_2
+)
+
+aw_data$proxy_interaction <-
+  aw_data$skill_proxy * aw_data$investment_proxy
+
+aw_data$instrument_interaction <-
+  aw_data$skill_instrument *
+  aw_data$investment_instrument
+```
+
+## Naive translog regression
+
+```{r naive-aw}
+naive_aw_fit <- lm(
+  outcome ~
+    skill_proxy +
+    investment_proxy +
+    proxy_interaction,
+  data = aw_data
+)
+
+naive_aw_coef <- coef(naive_aw_fit)[
+  c("skill_proxy", "investment_proxy", "proxy_interaction")
+]
+```
+
+## Manual two-stage least squares
+
+The first stage projects every endogenous regressor onto the excluded
+alternative measures:
+
+$$
+\left[
+\widetilde Z_{\theta,1},
+\widetilde Z_{I,1},
+\widetilde Z_{\theta,1}\widetilde Z_{I,1}
+\right]
+\quad\text{on}\quad
+\left[
+\widetilde Z_{\theta,2},
+\widetilde Z_{I,2},
+\widetilde Z_{\theta,2}\widetilde Z_{I,2}
+\right].
+$$
+
+The second stage uses the fitted values from these first-stage regressions.
+
+```{r aw-2sls}
+instrument_set <- aw_data[
+  c(
+    "skill_instrument",
+    "investment_instrument",
+    "instrument_interaction"
+  )
+]
+
+endogenous_set <- aw_data[
+  c(
+    "skill_proxy",
+    "investment_proxy",
+    "proxy_interaction"
+  )
+]
+
+first_stage_fits <- lapply(
+  endogenous_set,
+  function(x) {
+    lm(
+      x ~
+        skill_instrument +
+        investment_instrument +
+        instrument_interaction,
+      data = cbind(
+        x = x,
+        instrument_set
+      )
+    )
+  }
+)
+
+fitted_endogenous <- as.data.frame(
+  lapply(first_stage_fits, fitted)
+)
+
+names(fitted_endogenous) <- c(
+  "skill_hat",
+  "investment_hat",
+  "interaction_hat"
+)
+
+second_stage_data <- cbind(
+  outcome = aw_data$outcome,
+  fitted_endogenous
+)
+
+aw_iv_fit <- lm(
+  outcome ~
+    skill_hat +
+    investment_hat +
+    interaction_hat,
+  data = second_stage_data
+)
+
+aw_iv_coef <- coef(aw_iv_fit)[
+  c("skill_hat", "investment_hat", "interaction_hat")
+]
+```
+
+## Compare the estimates
+
+```{r compare-aw}
+aw_comparison <- data.frame(
+  Parameter = c(
+    "Current skill",
+    "Investment",
+    "Skill-investment interaction"
+  ),
+  True = c(b1_true, b2_true, b3_true),
+  Naive_OLS = as.numeric(naive_aw_coef),
+  AW_style_IV = as.numeric(aw_iv_coef)
+)
+
+kable(aw_comparison, digits = 3)
+```
+
+The point of the comparison is not that this small simulation reproduces all
+of AW. The point is to make the source of the correction visible:
+
+1. the main measures contain the latent variables plus noise;
+2. the noisy regressors are endogenous because their noise enters the error;
+3. alternative measures remain correlated with the latent signal;
+4. the alternative measures can therefore serve as internal instruments.
+
+# 5. Where age-invariance enters
+
+The repeated-measure IV above addresses measurement error. It does not by
+itself connect the factor scale across ages.
+
+AW additionally requires at least one suitable age-invariant measure for each
+latent factor, or an equivalent set of overlapping measures. For an
+age-invariant anchor:
+
+$$
+\mu_{\theta,t,m}=\mu_{\theta,0,m},
+\qquad
+\lambda_{\theta,t,m}=\lambda_{\theta,0,m}
+\qquad
+\text{for every }t.
+$$
+
+In the simulation, the first cognitive measure can be interpreted as such an
+anchor because its loading is set to one at both periods:
+
+```{r age-invariant-anchor}
+age_invariant_example <- data.frame(
+  Period = c("t = 0", "t = 1"),
+  Anchor = c("Z_theta0_1", "Z_theta1_1"),
+  Loading = c(1, 1),
+  Interpretation = c(
+    "Initial-period scale",
+    "Same scale carried forward"
+  )
+)
+
+kable(age_invariant_example, align = "lccc")
+```
+
+In an empirical application, this is a maintained measurement restriction.
+It should not be confused with simply converting each test score into an
+age-specific \(z\)-score.
+
+# 6. What this notebook leaves out
+
+This is intentionally smaller than the full AW implementation. It does not
+include:
+
+- multiple developmental stages;
+- cognitive and noncognitive skills simultaneously;
+- a complete investment policy function;
+- all covariance restrictions used in the paper;
+- the full sequential recovery of every measurement parameter;
+- bootstrap inference across all estimation steps;
+- the complete adult-outcome anchoring procedure.
+
+The notebook is designed to make the logic of the estimator transparent:
+
+$$
+\text{CES benchmark}
+\;\longrightarrow\;
+\text{measurement error}
+\;\longrightarrow\;
+\text{internal IV}
+\;\longrightarrow\;
+\text{AW-style translog estimation}.
+$$
+
+```{r session-info, echo=FALSE}
+sessionInfo()
+```

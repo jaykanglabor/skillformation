@@ -3,6 +3,9 @@
 .quarto/
 _output/
 *.html
+estimation_demo/*_files/
+estimation_demo/*.knit.md
+estimation_demo/.ipynb_checkpoints/
 *.log
 *.aux
 *.bbl
