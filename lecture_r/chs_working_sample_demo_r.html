@@ -1,0 +1,1520 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.10.18">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Child Skill Formation">
+<meta name="dcterms.date" content="2026-09-02">
+
+<title>How the CHS Likelihood Works</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="chs_working_sample_demo_r_files/libs/clipboard/clipboard.min.js"></script>
+<script src="chs_working_sample_demo_r_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="chs_working_sample_demo_r_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="chs_working_sample_demo_r_files/libs/quarto-html/popper.min.js"></script>
+<script src="chs_working_sample_demo_r_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="chs_working_sample_demo_r_files/libs/quarto-html/anchor.min.js"></script>
+<link href="chs_working_sample_demo_r_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="chs_working_sample_demo_r_files/libs/quarto-html/quarto-syntax-highlighting-64a204ab8560d761af7679ceaba22944.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="chs_working_sample_demo_r_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="chs_working_sample_demo_r_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="chs_working_sample_demo_r_files/libs/bootstrap/bootstrap-215b371544c282197b31c8aa00ce3677.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+  <script>window.backupDefine = window.define; window.define = undefined;</script><script src="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.js"></script>
+  <script>document.addEventListener("DOMContentLoaded", function () {
+ var mathElements = document.getElementsByClassName("math");
+ var macros = [];
+ for (var i = 0; i < mathElements.length; i++) {
+  var texText = mathElements[i].firstChild;
+  if (mathElements[i].tagName == "SPAN") {
+   katex.render(texText.data, mathElements[i], {
+    displayMode: mathElements[i].classList.contains('display'),
+    throwOnError: false,
+    macros: macros,
+    fleqn: false
+   });
+}}});
+  </script>
+  <script>window.define = window.backupDefine; window.backupDefine = undefined;</script><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@latest/dist/katex.min.css">
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#load-the-actual-nlsycya-data" id="toc-load-the-actual-nlsycya-data" class="nav-link active" data-scroll-target="#load-the-actual-nlsycya-data">0. Load the actual NLSY/CYA data</a></li>
+  <li><a href="#put-the-entire-chs-system-on-the-page" id="toc-put-the-entire-chs-system-on-the-page" class="nav-link" data-scroll-target="#put-the-entire-chs-system-on-the-page">1. Put the entire CHS system on the page</a></li>
+  <li><a href="#measurement-system-identify-signal-from-covariance" id="toc-measurement-system-identify-signal-from-covariance" class="nav-link" data-scroll-target="#measurement-system-identify-signal-from-covariance">2. Measurement system: identify signal from covariance</a></li>
+  <li><a href="#investment-and-ces-production-densities" id="toc-investment-and-ces-production-densities" class="nav-link" data-scroll-target="#investment-and-ces-production-densities">3. Investment and CES production densities</a></li>
+  <li><a href="#one-actual-childs-full-conditional-contribution" id="toc-one-actual-childs-full-conditional-contribution" class="nav-link" data-scroll-target="#one-actual-childs-full-conditional-contribution">4. One actual child’s full conditional contribution</a></li>
+  <li><a href="#chs-style-computation-integrate-then-maximize" id="toc-chs-style-computation-integrate-then-maximize" class="nav-link" data-scroll-target="#chs-style-computation-integrate-then-maximize">5. CHS-style computation: integrate, then maximize</a></li>
+  <li><a href="#the-agostinelliwiswall-alternative" id="toc-the-agostinelliwiswall-alternative" class="nav-link" data-scroll-target="#the-agostinelliwiswall-alternative">6. The Agostinelli–Wiswall alternative</a></li>
+  </ul>
+</nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">How the CHS Likelihood Works</h1>
+<p class="subtitle lead">Actual NLSY/CYA observations and a transparent likelihood decomposition</p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Child Skill Formation </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">September 2, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="load-the-actual-nlsycya-data" class="level1">
+<h1>0. Load the actual NLSY/CYA data</h1>
+<p>This notebook no longer generates artificial test scores, HOME measures, or adult outcomes. It loads the local extract of white first-born children and uses their actual observations. Latent skills and investment are still unobserved; that is precisely why they must be integrated out.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Load the working-sample flags and the three observed-data files.</span></span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>child <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"data/chs_white_firstborn_appendix_a9_child.csv"</span>)</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>period <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"data/chs_white_firstborn_appendix_a9_period.csv"</span>)</span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>measure <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"data/chs_white_firstborn_measurements_long.csv"</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>adult <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"data/chs_adult_outcomes_2020.csv"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>The Appendix A9 rule selects children observed in all three A9 blocks and whose maternal measures are complete.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Apply the previously constructed Appendix A9 sample restrictions.</span></span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>keep <span class="ot">&lt;-</span> child<span class="sc">$</span>child_has_all_three_a9_types <span class="sc">&amp;</span> child<span class="sc">$</span>maternal_a9_complete</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>working_ids <span class="ot">&lt;-</span> <span class="fu">unique</span>(child<span class="sc">$</span>child_id[keep])</span>
+<span id="cb2-4"><a href="#cb2-4" aria-hidden="true" tabindex="-1"></a>measure <span class="ot">&lt;-</span> measure[measure<span class="sc">$</span>child_id <span class="sc">%in%</span> working_ids, ]</span>
+<span id="cb2-5"><a href="#cb2-5" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Appendix A9 working sample:"</span>, <span class="fu">length</span>(working_ids), <span class="st">"children</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Appendix A9 working sample: 2219 children</code></pre>
+</div>
+</div>
+<p>We use one transition: ages 5–6 (<span class="math inline">t</span>) to ages 7–8 (<span class="math inline">t+1</span>). If a child has more than one interview inside an age bin, the code averages the available observations inside that bin. This is data preparation, not construction of a latent-skill proxy.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>measure_vars <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"piat_math_raw"</span>, <span class="st">"piat_reading_recognition_raw"</span>, <span class="st">"ppvt_raw"</span>,</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">"bpi_antisocial_raw"</span>, <span class="st">"bpi_headstrong_raw"</span>, <span class="st">"bpi_hyperactive_raw"</span>,</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">"home_read_b"</span>, <span class="st">"home_read_c"</span>, <span class="st">"home_music_c"</span>, <span class="st">"home_total_z"</span>,</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  <span class="st">"home_cognitive_z"</span>, <span class="st">"home_emotional_z"</span>)</span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>use <span class="ot">&lt;-</span> measure[measure<span class="sc">$</span>chs_period_approx <span class="sc">%in%</span> <span class="fu">c</span>(<span class="dv">4</span>, <span class="dv">5</span>), ]</span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>by_age <span class="ot">&lt;-</span> <span class="fu">aggregate</span>(use[measure_vars], <span class="fu">list</span>(<span class="at">child_id =</span> use<span class="sc">$</span>child_id,</span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">period =</span> use<span class="sc">$</span>chs_period_approx), <span class="cf">function</span>(x) <span class="fu">mean</span>(x, <span class="at">na.rm =</span> <span class="cn">TRUE</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Put the two age bins on the same child-level row.</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>p4 <span class="ot">&lt;-</span> by_age[by_age<span class="sc">$</span>period <span class="sc">==</span> <span class="dv">4</span>, ]; p4<span class="sc">$</span>period <span class="ot">&lt;-</span> <span class="cn">NULL</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>p5 <span class="ot">&lt;-</span> by_age[by_age<span class="sc">$</span>period <span class="sc">==</span> <span class="dv">5</span>, ]; p5<span class="sc">$</span>period <span class="ot">&lt;-</span> <span class="cn">NULL</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>panel <span class="ot">&lt;-</span> <span class="fu">merge</span>(p4, p5, <span class="at">by =</span> <span class="st">"child_id"</span>, <span class="at">suffixes =</span> <span class="fu">c</span>(<span class="st">"_t"</span>, <span class="st">"_tp1"</span>))</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Children observed in both age bins:"</span>, <span class="fu">nrow</span>(panel), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Children observed in both age bins: 1271 </code></pre>
+</div>
+</div>
+<p>Maternal ASVAB and self-esteem measures form <span class="math inline">Z_3</span>. Actual 2020 schooling, wage income, and conviction outcomes form <span class="math inline">Z_4</span>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>mvars <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"maternal_asvab_arithmetic_reasoning"</span>, <span class="st">"maternal_asvab_word_knowledge"</span>,</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">"maternal_asvab_paragraph_composition"</span>, <span class="st">"maternal_se_worth"</span>,</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">"maternal_se_good_qualities"</span>, <span class="st">"maternal_se_positive_attitude"</span>)</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>mother <span class="ot">&lt;-</span> period[period<span class="sc">$</span>period <span class="sc">==</span> <span class="dv">4</span>, <span class="fu">c</span>(<span class="st">"child_id"</span>, mvars)]</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>mother <span class="ot">&lt;-</span> mother[<span class="sc">!</span><span class="fu">duplicated</span>(mother<span class="sc">$</span>child_id), ]</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>panel <span class="ot">&lt;-</span> <span class="fu">merge</span>(panel, mother, <span class="at">by =</span> <span class="st">"child_id"</span>, <span class="at">all.x =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>panel <span class="ot">&lt;-</span> <span class="fu">merge</span>(panel, adult, <span class="at">by =</span> <span class="st">"child_id"</span>, <span class="at">all.x =</span> <span class="cn">TRUE</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>For the main transition sample we require two cognitive measures, three noncognitive measures, and three HOME indices at both dates. Missing PPVT and adult outcomes are allowed in the general sample likelihood.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a>core_base <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="st">"piat_math_raw"</span>, <span class="st">"piat_reading_recognition_raw"</span>,</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">"bpi_antisocial_raw"</span>, <span class="st">"bpi_headstrong_raw"</span>, <span class="st">"bpi_hyperactive_raw"</span>,</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>  <span class="st">"home_total_z"</span>, <span class="st">"home_cognitive_z"</span>, <span class="st">"home_emotional_z"</span>)</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>core <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fu">paste0</span>(core_base, <span class="st">"_t"</span>), <span class="fu">paste0</span>(core_base, <span class="st">"_tp1"</span>), mvars)</span>
+<span id="cb8-5"><a href="#cb8-5" aria-hidden="true" tabindex="-1"></a>analysis <span class="ot">&lt;-</span> panel[<span class="fu">complete.cases</span>(panel[core]), ]</span>
+<span id="cb8-6"><a href="#cb8-6" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Complete two-period teaching panel:"</span>, <span class="fu">nrow</span>(analysis), <span class="st">"children</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Complete two-period teaching panel: 880 children</code></pre>
+</div>
+</div>
+<p>Standardization only changes the units of each observed variable. It does not average measures or replace the latent factors.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>analysis<span class="sc">$</span>log_wage_2020 <span class="ot">&lt;-</span> <span class="fu">log1p</span>(<span class="fu">pmax</span>(analysis<span class="sc">$</span>wage_income_2020, <span class="dv">0</span>))</span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>zvars <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fu">paste0</span>(measure_vars, <span class="st">"_t"</span>), <span class="fu">paste0</span>(measure_vars[<span class="dv">1</span><span class="sc">:</span><span class="dv">6</span>], <span class="st">"_tp1"</span>),</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  mvars, <span class="st">"log_wage_2020"</span>)</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (v <span class="cf">in</span> zvars) {</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>  analysis[[<span class="fu">paste0</span>(v, <span class="st">"_z"</span>)]] <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">scale</span>(analysis[[v]]))</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>analysis<span class="sc">$</span>college4_2020 <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(analysis<span class="sc">$</span>highest_grade_2020 <span class="sc">&gt;=</span> <span class="dv">8</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>The individual-measure HOME variables are sparse because questionnaires change with age. We retain the larger sample for the model and select one fully observed child only when displaying every numerical contribution.</p>
+</section>
+<section id="put-the-entire-chs-system-on-the-page" class="level1">
+<h1>1. Put the entire CHS system on the page</h1>
+<p>Let <span class="math inline">k\in\{C,N\}</span> index cognitive and noncognitive skills. A compact version of the full system is</p>
+<p><span class="math display">
+\begin{aligned}
+Z_{1,k,t,j,i}
+&amp;= \mu_{1,k,t,j}+\alpha_{1,k,t,j}\ln\theta_{k,t,i}
+    +\varepsilon_{1,k,t,j,i},\\
+Z_{2,t,j,i}
+&amp;= \mu_{2,t,j}+\alpha_{2,t,j}\ln I_{t,i}
+    +\varepsilon_{2,t,j,i},\\
+Z_{3,k,j,i}
+&amp;= \mu_{3,k,j}+\alpha_{3,k,j}\ln\theta_{k,P,i}
+    +\varepsilon_{3,k,j,i},\\
+Z_{4,j,i}
+&amp;= g_j(\theta_{C,T,i},\theta_{N,T,i},X_i)+\varepsilon_{4,j,i},\\
+\ln I_{t,i}
+&amp;= q_t(\ln\boldsymbol\theta_{t,i},
+         \ln\boldsymbol\theta_{P,i},Y_{t,i})+\eta_{I,t,i},\\
+\theta_{k,t+1,i}
+&amp;= \left[\sum_{\ell=1}^{5}\gamma_{k,t,\ell}
+X_{k,t,\ell,i}^{\varphi_{k,t}}\right]^{1/\varphi_{k,t}}
+    \exp(\eta_{k,t+1,i}).
+\end{aligned}
+</span></p>
+<p>The five CES inputs are current cognitive skill, current noncognitive skill, current investment, maternal cognitive skill, and maternal noncognitive skill. Measurement errors, investment shocks, production shocks, and the initial latent-factor distribution complete the probability model.</p>
+<section id="the-same-equations-can-lead-to-gmm-or-mle" class="level2">
+<h2 class="anchored" data-anchor-id="the-same-equations-can-lead-to-gmm-or-mle">The same equations can lead to GMM or MLE</h2>
+<p>GMM selects implications of the equations, such as means, covariances, and orthogonality restrictions:</p>
+<p><span class="math display">
+E[m_i(\psi)]=0,
+\qquad
+\widehat\psi_{GMM}
+=\arg\min_\psi\bar m(\psi)'W\bar m(\psi).
+</span></p>
+<p>MLE specifies the joint densities and integrates over the unobserved state <span class="math inline">\mathcal X_i</span>:</p>
+<p><span class="math display">
+L_i(\psi)=\int p(Z_i,\mathcal X_i\mid X_i;\psi)\,d\mathcal X_i,
+\qquad
+\widehat\psi_{ML}=\arg\max_\psi\sum_i\log L_i(\psi).
+</span></p>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"></th>
+<th style="text-align: left;">GMM</th>
+<th style="text-align: left;">MLE</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Uses</td>
+<td style="text-align: left;">Selected moments implied by the system</td>
+<td style="text-align: left;">Entire specified joint density</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Distribution</td>
+<td style="text-align: left;">Does not require every density to be specified</td>
+<td style="text-align: left;">Requires distributional assumptions or a flexible approximation</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Latent factors</td>
+<td style="text-align: left;">Recovered through covariance and higher-moment restrictions</td>
+<td style="text-align: left;">Integrated out of the likelihood</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Trade-off</td>
+<td style="text-align: left;">More robust to density misspecification</td>
+<td style="text-align: left;">Potentially more efficient, but computationally heavier</td>
+</tr>
+</tbody>
+</table>
+<p>This notebook follows the MLE factorization because it makes every likelihood contribution visible. It is a pedagogical full-information representation; it should not be confused with a claim that the original CHS replication code is one black-box simultaneous optimizer.</p>
+</section>
+</section>
+<section id="measurement-system-identify-signal-from-covariance" class="level1">
+<h1>2. Measurement system: identify signal from covariance</h1>
+<p>For three measures of one factor,</p>
+<p><span class="math display">
+Z_j=\lambda_j\theta+\epsilon_j,\qquad \lambda_1=1,
+</span></p>
+<p>conditional independence gives</p>
+<p><span class="math display">
+\begin{aligned}
+\operatorname{Cov}(Z_1,Z_2)&amp;=\lambda_2\operatorname{Var}(\theta),\\
+\operatorname{Cov}(Z_1,Z_3)&amp;=\lambda_3\operatorname{Var}(\theta),\\
+\operatorname{Cov}(Z_2,Z_3)&amp;=\lambda_2\lambda_3
+\operatorname{Var}(\theta).
+\end{aligned}
+</span></p>
+<p>Therefore the factor variance and loadings can be written directly in terms of observed covariances:</p>
+<p><span class="math display">
+\operatorname{Var}(\theta)=\frac{S_{12}S_{13}}{S_{23}},\qquad
+\lambda_2=\frac{S_{23}}{S_{13}},\qquad
+\lambda_3=\frac{S_{23}}{S_{12}}.
+</span></p>
+<p>The next calculation uses actual PIAT Mathematics, PIAT Reading Recognition, and PPVT scores at ages 5–6.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>cognitive_t <span class="ot">&lt;-</span> <span class="fu">paste0</span>(<span class="fu">c</span>(<span class="st">"piat_math_raw_t"</span>, <span class="st">"piat_reading_recognition_raw_t"</span>,</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  <span class="st">"ppvt_raw_t"</span>), <span class="st">"_z"</span>)</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>S_C <span class="ot">&lt;-</span> <span class="fu">cov</span>(analysis[cognitive_t], <span class="at">use =</span> <span class="st">"complete.obs"</span>)</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>V_C <span class="ot">&lt;-</span> S_C[<span class="dv">1</span>, <span class="dv">2</span>] <span class="sc">*</span> S_C[<span class="dv">1</span>, <span class="dv">3</span>] <span class="sc">/</span> S_C[<span class="dv">2</span>, <span class="dv">3</span>]</span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>lambda_C <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">1</span>, S_C[<span class="dv">2</span>, <span class="dv">3</span>] <span class="sc">/</span> S_C[<span class="dv">1</span>, <span class="dv">3</span>], S_C[<span class="dv">2</span>, <span class="dv">3</span>] <span class="sc">/</span> S_C[<span class="dv">1</span>, <span class="dv">2</span>])</span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>sigma_C <span class="ot">&lt;-</span> <span class="fu">sqrt</span>(<span class="fu">pmax</span>(<span class="fu">diag</span>(S_C) <span class="sc">-</span> lambda_C<span class="sc">^</span><span class="dv">2</span> <span class="sc">*</span> V_C, <span class="fl">0.05</span>))</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">cbind</span>(<span class="at">loading =</span> lambda_C, <span class="at">error_sd =</span> sigma_C), <span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>                                 loading error_sd
+piat_math_raw_t_z                  1.000    0.524
+piat_reading_recognition_raw_t_z   0.925    0.680
+ppvt_raw_t_z                       0.835    0.767</code></pre>
+</div>
+</div>
+<p>For example, the first covariance moment is</p>
+<p><span class="math display">
+m_{12}=S_{12}-\lambda_1\lambda_2\operatorname{Var}(\theta).
+</span></p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="co"># These are the three off-diagonal factor-model moments.</span></span>
+<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>g12 <span class="ot">&lt;-</span> S_C[<span class="dv">1</span>, <span class="dv">2</span>] <span class="sc">-</span> lambda_C[<span class="dv">1</span>] <span class="sc">*</span> lambda_C[<span class="dv">2</span>] <span class="sc">*</span> V_C</span>
+<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>g13 <span class="ot">&lt;-</span> S_C[<span class="dv">1</span>, <span class="dv">3</span>] <span class="sc">-</span> lambda_C[<span class="dv">1</span>] <span class="sc">*</span> lambda_C[<span class="dv">3</span>] <span class="sc">*</span> V_C</span>
+<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>g23 <span class="ot">&lt;-</span> S_C[<span class="dv">2</span>, <span class="dv">3</span>] <span class="sc">-</span> lambda_C[<span class="dv">2</span>] <span class="sc">*</span> lambda_C[<span class="dv">3</span>] <span class="sc">*</span> V_C</span>
+<span id="cb13-5"><a href="#cb13-5" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">c</span>(<span class="at">g12 =</span> g12, <span class="at">g13 =</span> g13, <span class="at">g23 =</span> g23), <span class="dv">8</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>g12 g13 g23 
+  0   0   0 </code></pre>
+</div>
+</div>
+<p>The same transparent covariance calculation is repeated for every observed three-measure block. This loop only avoids repeating identical algebra; it does not construct factor scores.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>blocks <span class="ot">&lt;-</span> <span class="fu">list</span>(</span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">Ct =</span> cognitive_t,</span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">Nt =</span> <span class="fu">paste0</span>(<span class="fu">c</span>(<span class="st">"bpi_antisocial_raw_t"</span>, <span class="st">"bpi_headstrong_raw_t"</span>, <span class="st">"bpi_hyperactive_raw_t"</span>), <span class="st">"_z"</span>),</span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">I =</span> <span class="fu">paste0</span>(<span class="fu">c</span>(<span class="st">"home_read_b_t"</span>, <span class="st">"home_read_c_t"</span>, <span class="st">"home_music_c_t"</span>), <span class="st">"_z"</span>),</span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">PC =</span> <span class="fu">paste0</span>(mvars[<span class="dv">1</span><span class="sc">:</span><span class="dv">3</span>], <span class="st">"_z"</span>), <span class="at">PN =</span> <span class="fu">paste0</span>(mvars[<span class="dv">4</span><span class="sc">:</span><span class="dv">6</span>], <span class="st">"_z"</span>),</span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">C1 =</span> <span class="fu">paste0</span>(<span class="fu">c</span>(<span class="st">"piat_math_raw_tp1"</span>, <span class="st">"piat_reading_recognition_raw_tp1"</span>, <span class="st">"ppvt_raw_tp1"</span>), <span class="st">"_z"</span>),</span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">N1 =</span> <span class="fu">paste0</span>(<span class="fu">c</span>(<span class="st">"bpi_antisocial_raw_tp1"</span>, <span class="st">"bpi_headstrong_raw_tp1"</span>, <span class="st">"bpi_hyperactive_raw_tp1"</span>), <span class="st">"_z"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>loadings <span class="ot">&lt;-</span> errors <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
+<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (b <span class="cf">in</span> <span class="fu">names</span>(blocks)) {</span>
+<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  S <span class="ot">&lt;-</span> <span class="fu">cov</span>(analysis[blocks[[b]]], <span class="at">use =</span> <span class="st">"complete.obs"</span>)</span>
+<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>  V <span class="ot">&lt;-</span> S[<span class="dv">1</span>, <span class="dv">2</span>] <span class="sc">*</span> S[<span class="dv">1</span>, <span class="dv">3</span>] <span class="sc">/</span> S[<span class="dv">2</span>, <span class="dv">3</span>]</span>
+<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>  loadings[[b]] <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="dv">1</span>, S[<span class="dv">2</span>, <span class="dv">3</span>] <span class="sc">/</span> S[<span class="dv">1</span>, <span class="dv">3</span>], S[<span class="dv">2</span>, <span class="dv">3</span>] <span class="sc">/</span> S[<span class="dv">1</span>, <span class="dv">2</span>])</span>
+<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a>  errors[[b]] <span class="ot">&lt;-</span> <span class="fu">sqrt</span>(<span class="fu">pmax</span>(<span class="fu">diag</span>(S) <span class="sc">-</span> loadings[[b]]<span class="sc">^</span><span class="dv">2</span> <span class="sc">*</span> V, <span class="fl">0.05</span>))</span>
+<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>The <span class="math inline">0.05</span> floor prevents a finite-sample Heywood variance from making this small teaching calculation undefined. A production application should estimate admissible covariance parameters directly rather than clip them.</p>
+</section>
+<section id="investment-and-ces-production-densities" class="level1">
+<h1>3. Investment and CES production densities</h1>
+<p>For the numerical decomposition, choose one actual child observed in all displayed measures and adult outcomes.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>need <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fu">unlist</span>(blocks), <span class="st">"log_wage_2020_z"</span>, <span class="st">"college4_2020"</span>, <span class="st">"convicted_2020"</span>)</span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>demo <span class="ot">&lt;-</span> analysis[<span class="fu">complete.cases</span>(analysis[need]), ]</span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>r <span class="ot">&lt;-</span> demo[<span class="dv">1</span>, ]</span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Displayed child ID:"</span>, r<span class="sc">$</span>child_id, <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Displayed child ID: 154101 </code></pre>
+</div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Fully observed candidates:"</span>, <span class="fu">nrow</span>(demo), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Fully observed candidates: 3 </code></pre>
+</div>
+</div>
+<p>The following values are <strong>one integration node</strong>, not observed factor scores. The observed <span class="math inline">Z</span> values come from the selected child; the latent state is varied and eventually integrated out.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>x <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="at">PC =</span> <span class="fl">0.15</span>, <span class="at">PN =</span> <span class="sc">-</span><span class="fl">0.10</span>, <span class="at">Ct =</span> <span class="fl">0.20</span>, <span class="at">Nt =</span> <span class="sc">-</span><span class="fl">0.25</span>,</span>
+<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">I =</span> <span class="fl">0.10</span>, <span class="at">C1 =</span> <span class="fl">0.30</span>, <span class="at">N1 =</span> <span class="sc">-</span><span class="fl">0.15</span>)</span>
+<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(x, <span class="dv">2</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   PC    PN    Ct    Nt     I    C1    N1 
+ 0.15 -0.10  0.20 -0.25  0.10  0.30 -0.15 </code></pre>
+</div>
+</div>
+<p>At this node, the investment equation supplies a density for latent investment rather than for a HOME proxy:</p>
+<p><span class="math display">
+\ln I_i=\beta_0+\beta_C\ln\theta_{C,t,i}
++\beta_N\ln\theta_{N,t,i}+\beta_{PC}\ln\theta_{C,P,i}
++\beta_{PN}\ln\theta_{N,P,i}+\eta_{I,i}.
+</span></p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>beta_I <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="at">intercept =</span> <span class="fl">0.10</span>, <span class="at">Ct =</span> <span class="fl">0.20</span>, <span class="at">Nt =</span> <span class="fl">0.10</span>, <span class="at">PC =</span> <span class="fl">0.15</span>, <span class="at">PN =</span> <span class="fl">0.10</span>)</span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>mu_I <span class="ot">&lt;-</span> beta_I[<span class="dv">1</span>] <span class="sc">+</span> <span class="fu">sum</span>(beta_I[<span class="sc">-</span><span class="dv">1</span>] <span class="sc">*</span> x[<span class="fu">c</span>(<span class="st">"Ct"</span>, <span class="st">"Nt"</span>, <span class="st">"PC"</span>, <span class="st">"PN"</span>)])</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>sd_I <span class="ot">&lt;-</span> <span class="fl">0.55</span></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>ll_investment <span class="ot">&lt;-</span> <span class="fu">dnorm</span>(x[<span class="st">"I"</span>], <span class="at">mean =</span> mu_I, <span class="at">sd =</span> sd_I, <span class="at">log =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">c</span>(<span class="at">observed_node =</span> x[<span class="st">"I"</span>], <span class="at">mean =</span> mu_I, <span class="at">log_density =</span> ll_investment), <span class="dv">4</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>observed_node.I  mean.intercept   log_density.I 
+         0.1000          0.1275         -0.3224 </code></pre>
+</div>
+</div>
+<p>The cognitive and noncognitive production densities evaluate how close the next latent skills are to the CES predictions.</p>
+<p>Recall that the entries of <code>x</code> are in logs. Define</p>
+<p><span class="math display">
+c_t=x[\texttt{Ct}],\quad n_t=x[\texttt{Nt}],\quad
+i_t=x[\texttt{I}],\quad p_C=x[\texttt{PC}],\quad
+p_N=x[\texttt{PN}].
+</span></p>
+<p>The level inputs passed to the CES function are therefore</p>
+<p><span class="math display">
+X(x)=\left(e^{c_t},e^{n_t},e^{i_t},e^{p_C},e^{p_N}\right).
+</span></p>
+<p>The conditional mean of next-period <strong>log cognitive skill</strong> is</p>
+<p><span class="math display">
+\begin{aligned}
+\mu_{C1}
+&amp;=\log\!\left[
+\sum_{\ell=1}^{5}\gamma_{C,\ell}X_\ell(x)^{\phi_C}
+\right]^{1/\phi_C}\\
+&amp;=\frac{1}{\phi_C}\log\!\left[
+\gamma_{C,1}e^{\phi_Cc_t}
++\gamma_{C,2}e^{\phi_Cn_t}
++\gamma_{C,3}e^{\phi_Ci_t}
++\gamma_{C,4}e^{\phi_Cp_C}
++\gamma_{C,5}e^{\phi_Cp_N}
+\right].
+\end{aligned}
+</span></p>
+<p>With the candidate values used below, this becomes</p>
+<p><span class="math display">
+\mu_{C1}=\frac{1}{0.35}\log\!\left[
+0.30e^{0.35c_t}+0.15e^{0.35n_t}+0.25e^{0.35i_t}
++0.20e^{0.35p_C}+0.10e^{0.35p_N}
+\right].
+</span></p>
+<p>Likewise, the conditional mean of next-period <strong>log noncognitive skill</strong> is</p>
+<p><span class="math display">
+\mu_{N1}=\frac{1}{0.20}\log\!\left[
+0.15e^{0.20c_t}+0.35e^{0.20n_t}+0.25e^{0.20i_t}
++0.10e^{0.20p_C}+0.15e^{0.20p_N}
+\right].
+</span></p>
+<p>The code implements these two expressions literally: <code>exp()</code> converts the log states to levels, the weighted power sum calculates the CES output, and the outer <code>log()</code> returns to the log-skill scale used by <code>x["C1"]</code> and <code>x["N1"]</code>.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb25"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb25-1"><a href="#cb25-1" aria-hidden="true" tabindex="-1"></a>gamma_C <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">0.30</span>, <span class="fl">0.15</span>, <span class="fl">0.25</span>, <span class="fl">0.20</span>, <span class="fl">0.10</span>); phi_C <span class="ot">&lt;-</span> <span class="fl">0.35</span></span>
+<span id="cb25-2"><a href="#cb25-2" aria-hidden="true" tabindex="-1"></a>gamma_N <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fl">0.15</span>, <span class="fl">0.35</span>, <span class="fl">0.25</span>, <span class="fl">0.10</span>, <span class="fl">0.15</span>); phi_N <span class="ot">&lt;-</span> <span class="fl">0.20</span></span>
+<span id="cb25-3"><a href="#cb25-3" aria-hidden="true" tabindex="-1"></a>inputs <span class="ot">&lt;-</span> <span class="fu">exp</span>(x[<span class="fu">c</span>(<span class="st">"Ct"</span>, <span class="st">"Nt"</span>, <span class="st">"I"</span>, <span class="st">"PC"</span>, <span class="st">"PN"</span>)])</span>
+<span id="cb25-4"><a href="#cb25-4" aria-hidden="true" tabindex="-1"></a>mu_C1 <span class="ot">&lt;-</span> <span class="fu">log</span>(<span class="fu">sum</span>(gamma_C <span class="sc">*</span> inputs<span class="sc">^</span>phi_C)<span class="sc">^</span>(<span class="dv">1</span> <span class="sc">/</span> phi_C))</span>
+<span id="cb25-5"><a href="#cb25-5" aria-hidden="true" tabindex="-1"></a>mu_N1 <span class="ot">&lt;-</span> <span class="fu">log</span>(<span class="fu">sum</span>(gamma_N <span class="sc">*</span> inputs<span class="sc">^</span>phi_N)<span class="sc">^</span>(<span class="dv">1</span> <span class="sc">/</span> phi_N))</span>
+<span id="cb25-6"><a href="#cb25-6" aria-hidden="true" tabindex="-1"></a>ll_C1 <span class="ot">&lt;-</span> <span class="fu">dnorm</span>(x[<span class="st">"C1"</span>], mu_C1, <span class="fl">0.45</span>, <span class="at">log =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb25-7"><a href="#cb25-7" aria-hidden="true" tabindex="-1"></a>ll_N1 <span class="ot">&lt;-</span> <span class="fu">dnorm</span>(x[<span class="st">"N1"</span>], mu_N1, <span class="fl">0.55</span>, <span class="at">log =</span> <span class="cn">TRUE</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a>production <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">skill =</span> <span class="fu">c</span>(<span class="st">"Cognitive"</span>, <span class="st">"Noncognitive"</span>),</span>
+<span id="cb26-3"><a href="#cb26-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">latent_next =</span> x[<span class="fu">c</span>(<span class="st">"C1"</span>, <span class="st">"N1"</span>)],</span>
+<span id="cb26-4"><a href="#cb26-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">CES_prediction =</span> <span class="fu">c</span>(mu_C1, mu_N1),</span>
+<span id="cb26-5"><a href="#cb26-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">log_density =</span> <span class="fu">c</span>(ll_C1, ll_N1))</span>
+<span id="cb26-6"><a href="#cb26-6" aria-hidden="true" tabindex="-1"></a><span class="fu">kable</span>(production, <span class="at">digits =</span> <span class="dv">4</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;"></th>
+<th style="text-align: left;">skill</th>
+<th style="text-align: right;">latent_next</th>
+<th style="text-align: right;">CES_prediction</th>
+<th style="text-align: right;">log_density</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">C1</td>
+<td style="text-align: left;">Cognitive</td>
+<td style="text-align: right;">0.30</td>
+<td style="text-align: right;">0.0718</td>
+<td style="text-align: right;">-0.2491</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">N1</td>
+<td style="text-align: left;">Noncognitive</td>
+<td style="text-align: right;">-0.15</td>
+<td style="text-align: right;">-0.0292</td>
+<td style="text-align: right;">-0.3452</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="one-actual-childs-full-conditional-contribution" class="level1">
+<h1>4. One actual child’s full conditional contribution</h1>
+<p>For fixed <span class="math inline">\mathcal X_i</span>, the joint contribution factors as</p>
+<p><span class="math display">
+\begin{aligned}
+p(Z_i,\mathcal X_i)
+={}&amp;p(\theta_{P,i},\theta_{t,i})
+p(Z_{3,i}\mid\theta_{P,i})p(Z_{1,t,i}\mid\theta_{t,i})\\
+&amp;\times p(I_{t,i}\mid\theta_{t,i},\theta_{P,i})
+p(Z_{2,t,i}\mid I_{t,i})\\
+&amp;\times p(\theta_{t+1,i}\mid\theta_{t,i},I_{t,i},\theta_{P,i})
+p(Z_{1,t+1,i}\mid\theta_{t+1,i})\\
+&amp;\times p(Z_{4,i}\mid\theta_{t+1,i}).
+\end{aligned}
+</span></p>
+<p>Each actual observed measure now contributes its own Gaussian log density.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb27"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb27-1"><a href="#cb27-1" aria-hidden="true" tabindex="-1"></a>factor <span class="ot">&lt;-</span> <span class="fu">rep</span>(<span class="fu">names</span>(blocks), <span class="at">each =</span> <span class="dv">3</span>)</span>
+<span id="cb27-2"><a href="#cb27-2" aria-hidden="true" tabindex="-1"></a>meas <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(factor, <span class="at">measure =</span> <span class="fu">sub</span>(<span class="st">"_z$"</span>, <span class="st">""</span>, <span class="fu">unlist</span>(blocks)))</span>
+<span id="cb27-3"><a href="#cb27-3" aria-hidden="true" tabindex="-1"></a>meas<span class="sc">$</span>z <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">unlist</span>(r[<span class="fu">unlist</span>(blocks)]))</span>
+<span id="cb27-4"><a href="#cb27-4" aria-hidden="true" tabindex="-1"></a>meas<span class="sc">$</span>lambda <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">unlist</span>(loadings[<span class="fu">names</span>(blocks)]))</span>
+<span id="cb27-5"><a href="#cb27-5" aria-hidden="true" tabindex="-1"></a>meas<span class="sc">$</span>sigma <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">unlist</span>(errors[<span class="fu">names</span>(blocks)]))</span>
+<span id="cb27-6"><a href="#cb27-6" aria-hidden="true" tabindex="-1"></a>meas<span class="sc">$</span>latent_node <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(x[meas<span class="sc">$</span>factor])</span>
+<span id="cb27-7"><a href="#cb27-7" aria-hidden="true" tabindex="-1"></a>meas<span class="sc">$</span>log_density <span class="ot">&lt;-</span> <span class="fu">dnorm</span>(meas<span class="sc">$</span>z, meas<span class="sc">$</span>lambda <span class="sc">*</span> meas<span class="sc">$</span>latent_node,</span>
+<span id="cb27-8"><a href="#cb27-8" aria-hidden="true" tabindex="-1"></a>  meas<span class="sc">$</span>sigma, <span class="at">log =</span> <span class="cn">TRUE</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="fu">kable</span>(meas, <span class="at">digits =</span> <span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 4%">
+<col style="width: 7%">
+<col style="width: 40%">
+<col style="width: 7%">
+<col style="width: 7%">
+<col style="width: 6%">
+<col style="width: 13%">
+<col style="width: 13%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"></th>
+<th style="text-align: left;">factor</th>
+<th style="text-align: left;">measure</th>
+<th style="text-align: right;">z</th>
+<th style="text-align: right;">lambda</th>
+<th style="text-align: right;">sigma</th>
+<th style="text-align: right;">latent_node</th>
+<th style="text-align: right;">log_density</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Ct1</td>
+<td style="text-align: left;">Ct</td>
+<td style="text-align: left;">piat_math_raw_t</td>
+<td style="text-align: right;">-0.610</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">0.524</td>
+<td style="text-align: right;">0.20</td>
+<td style="text-align: right;">-1.467</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Ct2</td>
+<td style="text-align: left;">Ct</td>
+<td style="text-align: left;">piat_reading_recognition_raw_t</td>
+<td style="text-align: right;">-1.123</td>
+<td style="text-align: right;">0.925</td>
+<td style="text-align: right;">0.680</td>
+<td style="text-align: right;">0.20</td>
+<td style="text-align: right;">-2.382</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Ct3</td>
+<td style="text-align: left;">Ct</td>
+<td style="text-align: left;">ppvt_raw_t</td>
+<td style="text-align: right;">0.298</td>
+<td style="text-align: right;">0.835</td>
+<td style="text-align: right;">0.767</td>
+<td style="text-align: right;">0.20</td>
+<td style="text-align: right;">-0.669</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Nt1</td>
+<td style="text-align: left;">Nt</td>
+<td style="text-align: left;">bpi_antisocial_raw_t</td>
+<td style="text-align: right;">0.734</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">0.770</td>
+<td style="text-align: right;">-0.25</td>
+<td style="text-align: right;">-1.474</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Nt2</td>
+<td style="text-align: left;">Nt</td>
+<td style="text-align: left;">bpi_headstrong_raw_t</td>
+<td style="text-align: right;">1.034</td>
+<td style="text-align: right;">1.252</td>
+<td style="text-align: right;">0.602</td>
+<td style="text-align: right;">-0.25</td>
+<td style="text-align: right;">-2.914</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Nt3</td>
+<td style="text-align: left;">Nt</td>
+<td style="text-align: left;">bpi_hyperactive_raw_t</td>
+<td style="text-align: right;">0.204</td>
+<td style="text-align: right;">1.111</td>
+<td style="text-align: right;">0.706</td>
+<td style="text-align: right;">-0.25</td>
+<td style="text-align: right;">-0.804</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">I1</td>
+<td style="text-align: left;">I</td>
+<td style="text-align: left;">home_read_b_t</td>
+<td style="text-align: right;">0.932</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">0.691</td>
+<td style="text-align: right;">0.10</td>
+<td style="text-align: right;">-1.275</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">I2</td>
+<td style="text-align: left;">I</td>
+<td style="text-align: left;">home_read_c_t</td>
+<td style="text-align: right;">-0.056</td>
+<td style="text-align: right;">2.009</td>
+<td style="text-align: right;">0.516</td>
+<td style="text-align: right;">0.10</td>
+<td style="text-align: right;">-0.381</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">I3</td>
+<td style="text-align: left;">I</td>
+<td style="text-align: left;">home_music_c_t</td>
+<td style="text-align: right;">0.139</td>
+<td style="text-align: right;">2.464</td>
+<td style="text-align: right;">0.796</td>
+<td style="text-align: right;">0.10</td>
+<td style="text-align: right;">-0.700</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">PC1</td>
+<td style="text-align: left;">PC</td>
+<td style="text-align: left;">maternal_asvab_arithmetic_reasoning</td>
+<td style="text-align: right;">-1.715</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">0.665</td>
+<td style="text-align: right;">0.15</td>
+<td style="text-align: right;">-4.445</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">PC2</td>
+<td style="text-align: left;">PC</td>
+<td style="text-align: left;">maternal_asvab_word_knowledge</td>
+<td style="text-align: right;">-0.531</td>
+<td style="text-align: right;">1.184</td>
+<td style="text-align: right;">0.466</td>
+<td style="text-align: right;">0.15</td>
+<td style="text-align: right;">-1.312</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">PC3</td>
+<td style="text-align: left;">PC</td>
+<td style="text-align: left;">maternal_asvab_paragraph_composition</td>
+<td style="text-align: right;">-0.322</td>
+<td style="text-align: right;">1.097</td>
+<td style="text-align: right;">0.573</td>
+<td style="text-align: right;">0.15</td>
+<td style="text-align: right;">-0.722</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">PN1</td>
+<td style="text-align: left;">PN</td>
+<td style="text-align: left;">maternal_se_worth</td>
+<td style="text-align: right;">-0.868</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">0.709</td>
+<td style="text-align: right;">-0.10</td>
+<td style="text-align: right;">-1.161</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">PN2</td>
+<td style="text-align: left;">PN</td>
+<td style="text-align: left;">maternal_se_good_qualities</td>
+<td style="text-align: right;">-1.143</td>
+<td style="text-align: right;">1.191</td>
+<td style="text-align: right;">0.543</td>
+<td style="text-align: right;">-0.10</td>
+<td style="text-align: right;">-2.087</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">PN3</td>
+<td style="text-align: left;">PN</td>
+<td style="text-align: left;">maternal_se_positive_attitude</td>
+<td style="text-align: right;">-1.378</td>
+<td style="text-align: right;">0.690</td>
+<td style="text-align: right;">0.874</td>
+<td style="text-align: right;">-0.10</td>
+<td style="text-align: right;">-1.905</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">C11</td>
+<td style="text-align: left;">C1</td>
+<td style="text-align: left;">piat_math_raw_tp1</td>
+<td style="text-align: right;">0.316</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">0.553</td>
+<td style="text-align: right;">0.30</td>
+<td style="text-align: right;">-0.327</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">C12</td>
+<td style="text-align: left;">C1</td>
+<td style="text-align: left;">piat_reading_recognition_raw_tp1</td>
+<td style="text-align: right;">-1.318</td>
+<td style="text-align: right;">0.919</td>
+<td style="text-align: right;">0.645</td>
+<td style="text-align: right;">0.30</td>
+<td style="text-align: right;">-3.530</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">C13</td>
+<td style="text-align: left;">C1</td>
+<td style="text-align: left;">ppvt_raw_tp1</td>
+<td style="text-align: right;">-0.344</td>
+<td style="text-align: right;">0.666</td>
+<td style="text-align: right;">0.846</td>
+<td style="text-align: right;">0.30</td>
+<td style="text-align: right;">-0.958</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">N11</td>
+<td style="text-align: left;">N1</td>
+<td style="text-align: left;">bpi_antisocial_raw_tp1</td>
+<td style="text-align: right;">0.580</td>
+<td style="text-align: right;">1.000</td>
+<td style="text-align: right;">0.716</td>
+<td style="text-align: right;">-0.15</td>
+<td style="text-align: right;">-1.104</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">N12</td>
+<td style="text-align: left;">N1</td>
+<td style="text-align: left;">bpi_headstrong_raw_tp1</td>
+<td style="text-align: right;">0.339</td>
+<td style="text-align: right;">1.104</td>
+<td style="text-align: right;">0.637</td>
+<td style="text-align: right;">-0.15</td>
+<td style="text-align: right;">-0.781</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">N13</td>
+<td style="text-align: left;">N1</td>
+<td style="text-align: left;">bpi_hyperactive_raw_tp1</td>
+<td style="text-align: right;">-0.522</td>
+<td style="text-align: right;">0.992</td>
+<td style="text-align: right;">0.721</td>
+<td style="text-align: right;">-0.15</td>
+<td style="text-align: right;">-0.726</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The adult block illustrates that <span class="math inline">Z_4</span> can mix continuous and discrete outcomes. Here four-year college and conviction use probit links, while log wage income uses a Gaussian density.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb29"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb29-1"><a href="#cb29-1" aria-hidden="true" tabindex="-1"></a>p_college <span class="ot">&lt;-</span> <span class="fu">pnorm</span>(<span class="sc">-</span><span class="fl">0.30</span> <span class="sc">+</span> <span class="fl">0.80</span> <span class="sc">*</span> x[<span class="st">"C1"</span>] <span class="sc">+</span> <span class="fl">0.40</span> <span class="sc">*</span> x[<span class="st">"N1"</span>])</span>
+<span id="cb29-2"><a href="#cb29-2" aria-hidden="true" tabindex="-1"></a>p_convict <span class="ot">&lt;-</span> <span class="fu">pnorm</span>(<span class="sc">-</span><span class="fl">1.20</span> <span class="sc">-</span> <span class="fl">0.30</span> <span class="sc">*</span> x[<span class="st">"C1"</span>] <span class="sc">-</span> <span class="fl">0.70</span> <span class="sc">*</span> x[<span class="st">"N1"</span>])</span>
+<span id="cb29-3"><a href="#cb29-3" aria-hidden="true" tabindex="-1"></a>ll_college <span class="ot">&lt;-</span> <span class="fu">dbinom</span>(r<span class="sc">$</span>college4_2020, <span class="dv">1</span>, p_college, <span class="at">log =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb29-4"><a href="#cb29-4" aria-hidden="true" tabindex="-1"></a>ll_convict <span class="ot">&lt;-</span> <span class="fu">dbinom</span>(r<span class="sc">$</span>convicted_2020, <span class="dv">1</span>, p_convict, <span class="at">log =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb29-5"><a href="#cb29-5" aria-hidden="true" tabindex="-1"></a>mu_wage <span class="ot">&lt;-</span> <span class="fl">0.40</span> <span class="sc">*</span> x[<span class="st">"C1"</span>] <span class="sc">+</span> <span class="fl">0.20</span> <span class="sc">*</span> x[<span class="st">"N1"</span>]</span>
+<span id="cb29-6"><a href="#cb29-6" aria-hidden="true" tabindex="-1"></a>ll_wage <span class="ot">&lt;-</span> <span class="fu">dnorm</span>(r<span class="sc">$</span>log_wage_2020_z, mu_wage, <span class="fl">0.90</span>, <span class="at">log =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb29-7"><a href="#cb29-7" aria-hidden="true" tabindex="-1"></a>ll_adult <span class="ot">&lt;-</span> ll_college <span class="sc">+</span> ll_convict <span class="sc">+</span> ll_wage</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<p>Finally add the initial-state, measurement, investment, production, and adult-outcome pieces. Every displayed number is evaluated at the same latent node for the same actual child.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>ll_initial <span class="ot">&lt;-</span> <span class="fu">sum</span>(<span class="fu">dnorm</span>(x[<span class="fu">c</span>(<span class="st">"PC"</span>, <span class="st">"PN"</span>, <span class="st">"Ct"</span>, <span class="st">"Nt"</span>)], <span class="dv">0</span>, <span class="dv">1</span>, <span class="at">log =</span> <span class="cn">TRUE</span>))</span>
+<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a>measure_by_block <span class="ot">&lt;-</span> <span class="fu">aggregate</span>(log_density <span class="sc">~</span> factor, <span class="at">data =</span> meas, sum)</span>
+<span id="cb30-3"><a href="#cb30-3" aria-hidden="true" tabindex="-1"></a>structural <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">factor =</span> <span class="fu">c</span>(<span class="st">"Initial state"</span>, <span class="st">"Investment function"</span>,</span>
+<span id="cb30-4"><a href="#cb30-4" aria-hidden="true" tabindex="-1"></a>  <span class="st">"Production: C"</span>, <span class="st">"Production: N"</span>, <span class="st">"Adult outcomes"</span>),</span>
+<span id="cb30-5"><a href="#cb30-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">log_density =</span> <span class="fu">c</span>(ll_initial, ll_investment, ll_C1, ll_N1, ll_adult))</span>
+<span id="cb30-6"><a href="#cb30-6" aria-hidden="true" tabindex="-1"></a>contributions <span class="ot">&lt;-</span> <span class="fu">rbind</span>(measure_by_block, structural)</span>
+<span id="cb30-7"><a href="#cb30-7" aria-hidden="true" tabindex="-1"></a><span class="fu">kable</span>(contributions, <span class="at">digits =</span> <span class="dv">4</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;">factor</th>
+<th style="text-align: right;">log_density</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">C1</td>
+<td style="text-align: right;">-4.8152</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Ct</td>
+<td style="text-align: right;">-4.5174</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">I</td>
+<td style="text-align: right;">-2.3564</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">N1</td>
+<td style="text-align: right;">-2.6114</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Nt</td>
+<td style="text-align: right;">-5.1919</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">PC</td>
+<td style="text-align: right;">-6.4797</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">PN</td>
+<td style="text-align: right;">-5.1536</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Initial state</td>
+<td style="text-align: right;">-3.7433</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Investment function</td>
+<td style="text-align: right;">-0.3224</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Production: C</td>
+<td style="text-align: right;">-0.2491</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Production: N</td>
+<td style="text-align: right;">-0.3452</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Adult outcomes</td>
+<td style="text-align: right;">-1.5896</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb31"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb31-1"><a href="#cb31-1" aria-hidden="true" tabindex="-1"></a>conditional_log_density <span class="ot">&lt;-</span> <span class="fu">sum</span>(contributions<span class="sc">$</span>log_density)</span>
+<span id="cb31-2"><a href="#cb31-2" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Full conditional log density at this node:"</span>,</span>
+<span id="cb31-3"><a href="#cb31-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">round</span>(conditional_log_density, <span class="dv">4</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Full conditional log density at this node: -37.3751 </code></pre>
+</div>
+</div>
+</section>
+<section id="chs-style-computation-integrate-then-maximize" class="level1">
+<h1>5. CHS-style computation: integrate, then maximize</h1>
+<p>The node above is not an estimate. The observed-data likelihood integrates over all possible latent states:</p>
+<p><span class="math display">
+L_i(\psi)=\int p(Z_i,\mathcal X_i;\psi)\,d\mathcal X_i.
+</span></p>
+<p>This integral is the central computational object. For every trial value of <span class="math inline">\psi</span>, the estimator evaluates a large complete-data likelihood at many latent paths, integrates those paths for every child, sums the marginal log likelihoods, and then changes <span class="math inline">\psi</span> and starts again.</p>
+<p><span class="math display">
+\boxed{
+\psi
+\longrightarrow
+\left\{p(Z_i,\mathcal X_i^{(b)};\psi)\right\}_{i,b}
+\longrightarrow
+\left\{L_i(\psi)\right\}_i
+\longrightarrow
+\sum_i\log L_i(\psi)
+}
+</span></p>
+<p>The code below uses sequential Monte Carlo. Drawing from the initial, investment, and production densities makes the marginal likelihood the average of the remaining measurement and adult-outcome densities.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb33"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb33-1"><a href="#cb33-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">20260902</span>); B <span class="ot">&lt;-</span> <span class="dv">20000</span>L</span>
+<span id="cb33-2"><a href="#cb33-2" aria-hidden="true" tabindex="-1"></a>draw <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(<span class="at">PC =</span> <span class="fu">rnorm</span>(B), <span class="at">PN =</span> <span class="fu">rnorm</span>(B),</span>
+<span id="cb33-3"><a href="#cb33-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">Ct =</span> <span class="fu">rnorm</span>(B), <span class="at">Nt =</span> <span class="fu">rnorm</span>(B))</span>
+<span id="cb33-4"><a href="#cb33-4" aria-hidden="true" tabindex="-1"></a>draw<span class="sc">$</span>I <span class="ot">&lt;-</span> beta_I[<span class="dv">1</span>] <span class="sc">+</span> beta_I[<span class="st">"Ct"</span>] <span class="sc">*</span> draw<span class="sc">$</span>Ct <span class="sc">+</span> beta_I[<span class="st">"Nt"</span>] <span class="sc">*</span> draw<span class="sc">$</span>Nt <span class="sc">+</span></span>
+<span id="cb33-5"><a href="#cb33-5" aria-hidden="true" tabindex="-1"></a>  beta_I[<span class="st">"PC"</span>] <span class="sc">*</span> draw<span class="sc">$</span>PC <span class="sc">+</span> beta_I[<span class="st">"PN"</span>] <span class="sc">*</span> draw<span class="sc">$</span>PN <span class="sc">+</span> <span class="fu">rnorm</span>(B, <span class="dv">0</span>, sd_I)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>Xdraw <span class="ot">&lt;-</span> <span class="fu">exp</span>(<span class="fu">as.matrix</span>(draw[<span class="fu">c</span>(<span class="st">"Ct"</span>, <span class="st">"Nt"</span>, <span class="st">"I"</span>, <span class="st">"PC"</span>, <span class="st">"PN"</span>)]))</span>
+<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>index_C <span class="ot">&lt;-</span> <span class="fu">rowSums</span>(<span class="fu">sweep</span>(Xdraw<span class="sc">^</span>phi_C, <span class="dv">2</span>, gamma_C, <span class="st">"*"</span>))</span>
+<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>index_N <span class="ot">&lt;-</span> <span class="fu">rowSums</span>(<span class="fu">sweep</span>(Xdraw<span class="sc">^</span>phi_N, <span class="dv">2</span>, gamma_N, <span class="st">"*"</span>))</span>
+<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a>draw<span class="sc">$</span>C1 <span class="ot">&lt;-</span> <span class="fu">log</span>(index_C<span class="sc">^</span>(<span class="dv">1</span> <span class="sc">/</span> phi_C)) <span class="sc">+</span> <span class="fu">rnorm</span>(B, <span class="dv">0</span>, <span class="fl">0.45</span>)</span>
+<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>draw<span class="sc">$</span>N1 <span class="ot">&lt;-</span> <span class="fu">log</span>(index_N<span class="sc">^</span>(<span class="dv">1</span> <span class="sc">/</span> phi_N)) <span class="sc">+</span> <span class="fu">rnorm</span>(B, <span class="dv">0</span>, <span class="fl">0.55</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>ll_observed <span class="ot">&lt;-</span> <span class="fu">rep</span>(<span class="dv">0</span>, B)</span>
+<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (j <span class="cf">in</span> <span class="fu">seq_len</span>(<span class="fu">nrow</span>(meas))) {</span>
+<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a>  f <span class="ot">&lt;-</span> meas<span class="sc">$</span>factor[j]</span>
+<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a>  ll_observed <span class="ot">&lt;-</span> ll_observed <span class="sc">+</span> <span class="fu">dnorm</span>(meas<span class="sc">$</span>z[j],</span>
+<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a>    meas<span class="sc">$</span>lambda[j] <span class="sc">*</span> draw[[f]], meas<span class="sc">$</span>sigma[j], <span class="at">log =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb35-6"><a href="#cb35-6" aria-hidden="true" tabindex="-1"></a>}</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb36"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb36-1"><a href="#cb36-1" aria-hidden="true" tabindex="-1"></a>pc <span class="ot">&lt;-</span> <span class="fu">pnorm</span>(<span class="sc">-</span><span class="fl">0.30</span> <span class="sc">+</span> <span class="fl">0.80</span> <span class="sc">*</span> draw<span class="sc">$</span>C1 <span class="sc">+</span> <span class="fl">0.40</span> <span class="sc">*</span> draw<span class="sc">$</span>N1)</span>
+<span id="cb36-2"><a href="#cb36-2" aria-hidden="true" tabindex="-1"></a>pv <span class="ot">&lt;-</span> <span class="fu">pnorm</span>(<span class="sc">-</span><span class="fl">1.20</span> <span class="sc">-</span> <span class="fl">0.30</span> <span class="sc">*</span> draw<span class="sc">$</span>C1 <span class="sc">-</span> <span class="fl">0.70</span> <span class="sc">*</span> draw<span class="sc">$</span>N1)</span>
+<span id="cb36-3"><a href="#cb36-3" aria-hidden="true" tabindex="-1"></a>ll_observed <span class="ot">&lt;-</span> ll_observed <span class="sc">+</span> <span class="fu">dbinom</span>(r<span class="sc">$</span>college4_2020, <span class="dv">1</span>, pc, <span class="at">log =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb36-4"><a href="#cb36-4" aria-hidden="true" tabindex="-1"></a>ll_observed <span class="ot">&lt;-</span> ll_observed <span class="sc">+</span> <span class="fu">dbinom</span>(r<span class="sc">$</span>convicted_2020, <span class="dv">1</span>, pv, <span class="at">log =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb36-5"><a href="#cb36-5" aria-hidden="true" tabindex="-1"></a>ll_observed <span class="ot">&lt;-</span> ll_observed <span class="sc">+</span> <span class="fu">dnorm</span>(r<span class="sc">$</span>log_wage_2020_z,</span>
+<span id="cb36-6"><a href="#cb36-6" aria-hidden="true" tabindex="-1"></a>  <span class="fl">0.40</span> <span class="sc">*</span> draw<span class="sc">$</span>C1 <span class="sc">+</span> <span class="fl">0.20</span> <span class="sc">*</span> draw<span class="sc">$</span>N1, <span class="fl">0.90</span>, <span class="at">log =</span> <span class="cn">TRUE</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Log-mean-exp prevents numerical underflow.</span></span>
+<span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>a <span class="ot">&lt;-</span> <span class="fu">max</span>(ll_observed)</span>
+<span id="cb37-3"><a href="#cb37-3" aria-hidden="true" tabindex="-1"></a>log_L_i <span class="ot">&lt;-</span> a <span class="sc">+</span> <span class="fu">log</span>(<span class="fu">mean</span>(<span class="fu">exp</span>(ll_observed <span class="sc">-</span> a)))</span>
+<span id="cb37-4"><a href="#cb37-4" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Monte Carlo marginal log likelihood:"</span>, <span class="fu">round</span>(log_L_i, <span class="dv">4</span>), <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Monte Carlo marginal log likelihood: -26.5448 </code></pre>
+</div>
+</div>
+<p>For the whole sample,</p>
+<p><span class="math display">
+\ell(\psi)=\sum_{i=1}^{n}\log L_i(\psi).
+</span></p>
+<p>An optimizer changes the measurement, investment, production, shock, and initial-distribution parameters, recomputes all <span class="math inline">L_i(\psi)</span>, and searches for the parameter vector that maximizes this sum. The computational difficulty is not any single density. It is repeatedly performing a high-dimensional integration for every child while respecting normalizations and parameter constraints.</p>
+</section>
+<section id="the-agostinelliwiswall-alternative" class="level1">
+<h1>6. The Agostinelli–Wiswall alternative</h1>
+<p>Agostinelli–Wiswall do not require an individual posterior assignment of <span class="math inline">\theta_i</span> inside the production-function estimator. Their sequential approach first links the measurement scales across ages and then substitutes rescaled noisy measures into the structural equations. Alternative measures of the same latent factor serve as instruments for the primary measure.</p>
+<p>Suppose the rescaled primary measures are</p>
+<p><span class="math display">
+\widetilde Z_{\theta,t,1}=\ln\theta_t+e_{\theta,t,1},
+\qquad
+\widetilde Z_{I,t,1}=\ln I_t+e_{I,t,1}.
+</span></p>
+<p>Substituting them into a translog technology gives</p>
+<p><span class="math display">
+\begin{aligned}
+\widetilde Z_{\theta,t+1,1}
+={}&amp;a_t+\gamma_{1,t}\widetilde Z_{\theta,t,1}
++\gamma_{2,t}\widetilde Z_{I,t,1}\\
+&amp;+\gamma_{3,t}\widetilde Z_{\theta,t,1}
+                    \widetilde Z_{I,t,1}+u_{t+1}.
+\end{aligned}
+</span></p>
+<p>The first skill and investment measures are endogenous regressors because their measurement errors enter <span class="math inline">u_{t+1}</span>. Under independent measurement errors, second measures contain the same latent signals but are orthogonal to those errors. This produces IV moments such as</p>
+<p><span class="math display">
+E\!\left[
+Q_{i,t}
+\left(
+\widetilde Z_{\theta,t+1,1}
+-X_{i,t}'\gamma_t
+\right)
+\right]=0,
+</span></p>
+<p>where a simple instrument vector is</p>
+<p><span class="math display">
+Q_{i,t}=\left(
+1,
+\widetilde Z_{\theta,t,2},
+\widetilde Z_{I,t,2},
+\widetilde Z_{\theta,t,2}\widetilde Z_{I,t,2}
+\right)'.
+</span></p>
+<section id="a-small-iv-calculation-with-the-actual-measures" class="level2">
+<h2 class="anchored" data-anchor-id="a-small-iv-calculation-with-the-actual-measures">A small IV calculation with the actual measures</h2>
+<p>The following code illustrates the computational skeleton. PIAT Mathematics is the primary skill measure, PIAT Reading Recognition is its alternative measure, and two different HOME indices play the analogous investment roles. The same baseline transformation is applied to Mathematics at both ages so that growth is not mechanically removed by period-specific standardization.</p>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a>aw <span class="ot">&lt;-</span> analysis</span>
+<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a>math_mu <span class="ot">&lt;-</span> <span class="fu">mean</span>(aw<span class="sc">$</span>piat_math_raw_t); math_sd <span class="ot">&lt;-</span> <span class="fu">sd</span>(aw<span class="sc">$</span>piat_math_raw_t)</span>
+<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a>aw<span class="sc">$</span>skill_t <span class="ot">&lt;-</span> (aw<span class="sc">$</span>piat_math_raw_t <span class="sc">-</span> math_mu) <span class="sc">/</span> math_sd</span>
+<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a>aw<span class="sc">$</span>skill_tp1 <span class="ot">&lt;-</span> (aw<span class="sc">$</span>piat_math_raw_tp1 <span class="sc">-</span> math_mu) <span class="sc">/</span> math_sd</span>
+<span id="cb39-5"><a href="#cb39-5" aria-hidden="true" tabindex="-1"></a>aw<span class="sc">$</span>skill_iv <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">scale</span>(aw<span class="sc">$</span>piat_reading_recognition_raw_t))</span>
+<span id="cb39-6"><a href="#cb39-6" aria-hidden="true" tabindex="-1"></a>aw<span class="sc">$</span>invest_t <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">scale</span>(aw<span class="sc">$</span>home_total_z_t))</span>
+<span id="cb39-7"><a href="#cb39-7" aria-hidden="true" tabindex="-1"></a>aw<span class="sc">$</span>invest_iv <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">scale</span>(aw<span class="sc">$</span>home_cognitive_z_t))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb40"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb40-1"><a href="#cb40-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Primary measures enter X; alternative measures enter Q.</span></span>
+<span id="cb40-2"><a href="#cb40-2" aria-hidden="true" tabindex="-1"></a>y_aw <span class="ot">&lt;-</span> aw<span class="sc">$</span>skill_tp1</span>
+<span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a>X_aw <span class="ot">&lt;-</span> <span class="fu">cbind</span>(<span class="dv">1</span>, aw<span class="sc">$</span>skill_t, aw<span class="sc">$</span>invest_t, aw<span class="sc">$</span>skill_t <span class="sc">*</span> aw<span class="sc">$</span>invest_t)</span>
+<span id="cb40-4"><a href="#cb40-4" aria-hidden="true" tabindex="-1"></a>Q_aw <span class="ot">&lt;-</span> <span class="fu">cbind</span>(<span class="dv">1</span>, aw<span class="sc">$</span>skill_iv, aw<span class="sc">$</span>invest_iv, aw<span class="sc">$</span>skill_iv <span class="sc">*</span> aw<span class="sc">$</span>invest_iv)</span>
+<span id="cb40-5"><a href="#cb40-5" aria-hidden="true" tabindex="-1"></a>A_aw <span class="ot">&lt;-</span> <span class="fu">crossprod</span>(Q_aw, X_aw)</span>
+<span id="cb40-6"><a href="#cb40-6" aria-hidden="true" tabindex="-1"></a>b_aw <span class="ot">&lt;-</span> <span class="fu">crossprod</span>(Q_aw, y_aw)</span>
+<span id="cb40-7"><a href="#cb40-7" aria-hidden="true" tabindex="-1"></a>W_aw <span class="ot">&lt;-</span> <span class="fu">solve</span>(<span class="fu">crossprod</span>(Q_aw))</span>
+<span id="cb40-8"><a href="#cb40-8" aria-hidden="true" tabindex="-1"></a>gamma_aw <span class="ot">&lt;-</span> <span class="fu">solve</span>(<span class="fu">t</span>(A_aw) <span class="sc">%*%</span> W_aw <span class="sc">%*%</span> A_aw,</span>
+<span id="cb40-9"><a href="#cb40-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">t</span>(A_aw) <span class="sc">%*%</span> W_aw <span class="sc">%*%</span> b_aw)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</div>
+<div class="cell">
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a>aw_result <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">parameter =</span> <span class="fu">c</span>(<span class="st">"Intercept"</span>, <span class="st">"Skill"</span>, <span class="st">"Investment"</span>, <span class="st">"Skill x Investment"</span>),</span>
+<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">estimate =</span> <span class="fu">as.numeric</span>(gamma_aw))</span>
+<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a><span class="fu">kable</span>(aw_result, <span class="at">digits =</span> <span class="dv">3</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<thead>
+<tr class="header">
+<th style="text-align: left;">parameter</th>
+<th style="text-align: right;">estimate</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Intercept</td>
+<td style="text-align: right;">2.565</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Skill</td>
+<td style="text-align: right;">1.302</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Investment</td>
+<td style="text-align: right;">-0.004</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Skill x Investment</td>
+<td style="text-align: right;">-0.270</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>This numerical result is not an AW replication. It illustrates the estimator’s logic with our extract. A proper application must estimate and test the age-invariant measurement restrictions, use the paper’s full instrument set, allow for missing observations, and address economic endogeneity separately from measurement error.</p>
+</section>
+<section id="what-changes-computationally" class="level2">
+<h2 class="anchored" data-anchor-id="what-changes-computationally">What changes computationally?</h2>
+<table class="caption-top table">
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;"></th>
+<th style="text-align: left;">CHS-style latent likelihood</th>
+<th style="text-align: left;">Agostinelli–Wiswall</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Individual skill</td>
+<td style="text-align: left;">Remains latent inside <span class="math inline">L_i(\psi)</span></td>
+<td style="text-align: left;">Replaced by a rescaled noisy measure</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Measurement error</td>
+<td style="text-align: left;">Handled by integrating the latent state</td>
+<td style="text-align: left;">Handled with alternative measures as IVs</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Production estimation</td>
+<td style="text-align: left;">Transition density inside a large likelihood</td>
+<td style="text-align: left;">Sequential IV/GMM production equation</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Main computation</td>
+<td style="text-align: left;">High-dimensional integration for each child</td>
+<td style="text-align: left;">Matrix moments and recursive IV steps</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Essential scale restriction</td>
+<td style="text-align: left;">Factor normalization</td>
+<td style="text-align: left;">Age-invariant measures linking periods</td>
+</tr>
+</tbody>
+</table>
+<p>The contrast is therefore not <code>latent skills'' versus</code>observed skills.’’ Both approaches treat skills as latent. The distinction is whether the estimator integrates latent histories or eliminates them from the estimating equations using transformed measures and moment restrictions.</p>
+</section>
+<section id="what-this-notebook-has-and-has-not-done" class="level2">
+<h2 class="anchored" data-anchor-id="what-this-notebook-has-and-has-not-done">What this notebook has and has not done</h2>
+<ul>
+<li>It uses actual NLSY/CYA child, HOME, maternal, schooling, wage, and conviction observations.</li>
+<li>It displays every density block in a CHS-style likelihood and integrates the latent state for one actual child.</li>
+<li>It does not pretend that standardized observed measures are latent-factor scores.</li>
+<li>It does not yet reproduce the full CHS estimates. Full replication requires all periods, CHS’s distributional specification, missing-data treatment, anchoring choices, endogeneity treatment, and constrained optimization.</li>
+<li>It now shows the computational skeleton of the Agostinelli–Wiswall sequential IV alternative, but does not claim to reproduce their estimates.</li>
+</ul>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

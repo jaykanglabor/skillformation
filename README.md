@@ -8,6 +8,7 @@ of cognitive and noncognitive skill technologies.
 - `Lecture slides/`: compiled lecture slides.
 - `estimation_demo/`: executable demonstrations for the skill-formation
   estimation workflow.
+- `lecture_r/`: self-contained RStudio/Quarto lecture project.
 
 ## Replication materials
 
@@ -79,6 +80,10 @@ use the **Render** button; in VSCode, use the Quarto preview command. The
 current Windows installation uses R 4.6.1; if Quarto does not find R
 automatically, set `QUARTO_R` to the R `bin` directory.
 
-This first page is deliberately a proxy-data exercise rather than a full CHS
-or AW estimator. It does not yet estimate latent factors, correct for
-measurement error, or identify a causal investment effect.
+For an RStudio-first workflow, open
+[`lecture_r/lecture_r.Rproj`](lecture_r/lecture_r.Rproj). The project contains
+the current likelihood lecture and the small public-use teaching extracts it
+loads. The lecture decomposes a CHS-style latent-state likelihood, demonstrates
+Monte Carlo integration for one observed child, and contrasts it with a simple
+Agostinelli--Wiswall sequential IV calculation. The raw NLSY files are not
+copied into this project.

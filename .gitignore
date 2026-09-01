@@ -3,9 +3,15 @@
 .quarto/
 _output/
 *.html
+!lecture_r/chs_working_sample_demo_r.html
 estimation_demo/*_files/
 estimation_demo/*.knit.md
 estimation_demo/.ipynb_checkpoints/
+lecture_r/_output/
+lecture_r/*_files/
+lecture_r/.quarto/
+lecture_r/.Rproj.user/
+lecture_r/*.knit.md
 *.log
 *.aux
 *.bbl
@@ -29,4 +35,4 @@ Application/
 *.docx
 
 # NLSY public-use data (download locally; do not commit)
-data/
+/data/

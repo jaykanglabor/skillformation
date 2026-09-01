@@ -1,0 +1,722 @@
+---
+title: "How the CHS Likelihood Works"
+subtitle: "Actual NLSY/CYA observations and a transparent likelihood decomposition"
+author: "Child Skill Formation"
+date: "2026-09-02"
+engine: knitr
+format:
+  html:
+    toc: true
+    toc-depth: 1
+    code-fold: false
+    html-math-method: katex
+execute:
+  echo: true
+  warning: false
+  message: false
+editor:
+  markdown:
+    wrap: 72
+---
+
+```{r}
+#| label: setup
+#| include: false
+
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(knitr)
+```
+
+# 0. Load the actual NLSY/CYA data
+
+This notebook no longer generates artificial test scores, HOME measures, or
+adult outcomes. It loads the local extract of white first-born children and
+uses their actual observations. Latent skills and investment are still
+unobserved; that is precisely why they must be integrated out.
+
+```{r}
+#| label: load-actual-data
+
+# Load the working-sample flags and the three observed-data files.
+child <- read.csv("data/chs_white_firstborn_appendix_a9_child.csv")
+period <- read.csv("data/chs_white_firstborn_appendix_a9_period.csv")
+measure <- read.csv("data/chs_white_firstborn_measurements_long.csv")
+adult <- read.csv("data/chs_adult_outcomes_2020.csv")
+```
+
+The Appendix A9 rule selects children observed in all three A9 blocks and
+whose maternal measures are complete.
+
+```{r}
+#| label: select-working-sample
+
+# Apply the previously constructed Appendix A9 sample restrictions.
+keep <- child$child_has_all_three_a9_types & child$maternal_a9_complete
+working_ids <- unique(child$child_id[keep])
+measure <- measure[measure$child_id %in% working_ids, ]
+cat("Appendix A9 working sample:", length(working_ids), "children\n")
+```
+
+We use one transition: ages 5--6 ($t$) to ages 7--8 ($t+1$). If a child has
+more than one interview inside an age bin, the code averages the available
+observations inside that bin. This is data preparation, not construction of
+a latent-skill proxy.
+
+```{r}
+#| label: collapse-age-bins
+
+measure_vars <- c("piat_math_raw", "piat_reading_recognition_raw", "ppvt_raw",
+  "bpi_antisocial_raw", "bpi_headstrong_raw", "bpi_hyperactive_raw",
+  "home_read_b", "home_read_c", "home_music_c", "home_total_z",
+  "home_cognitive_z", "home_emotional_z")
+use <- measure[measure$chs_period_approx %in% c(4, 5), ]
+by_age <- aggregate(use[measure_vars], list(child_id = use$child_id,
+  period = use$chs_period_approx), function(x) mean(x, na.rm = TRUE))
+```
+
+```{r}
+#| label: make-transition-panel
+
+# Put the two age bins on the same child-level row.
+p4 <- by_age[by_age$period == 4, ]; p4$period <- NULL
+p5 <- by_age[by_age$period == 5, ]; p5$period <- NULL
+panel <- merge(p4, p5, by = "child_id", suffixes = c("_t", "_tp1"))
+cat("Children observed in both age bins:", nrow(panel), "\n")
+```
+
+Maternal ASVAB and self-esteem measures form $Z_3$. Actual 2020 schooling,
+wage income, and conviction outcomes form $Z_4$.
+
+```{r}
+#| label: attach-parent-adult
+
+mvars <- c("maternal_asvab_arithmetic_reasoning", "maternal_asvab_word_knowledge",
+  "maternal_asvab_paragraph_composition", "maternal_se_worth",
+  "maternal_se_good_qualities", "maternal_se_positive_attitude")
+mother <- period[period$period == 4, c("child_id", mvars)]
+mother <- mother[!duplicated(mother$child_id), ]
+panel <- merge(panel, mother, by = "child_id", all.x = TRUE)
+panel <- merge(panel, adult, by = "child_id", all.x = TRUE)
+```
+
+For the main transition sample we require two cognitive measures, three
+noncognitive measures, and three HOME indices at both dates. Missing PPVT and
+adult outcomes are allowed in the general sample likelihood.
+
+```{r}
+#| label: analysis-sample
+
+core_base <- c("piat_math_raw", "piat_reading_recognition_raw",
+  "bpi_antisocial_raw", "bpi_headstrong_raw", "bpi_hyperactive_raw",
+  "home_total_z", "home_cognitive_z", "home_emotional_z")
+core <- c(paste0(core_base, "_t"), paste0(core_base, "_tp1"), mvars)
+analysis <- panel[complete.cases(panel[core]), ]
+cat("Complete two-period teaching panel:", nrow(analysis), "children\n")
+```
+
+Standardization only changes the units of each observed variable. It does
+not average measures or replace the latent factors.
+
+```{r}
+#| label: standardize-observed-data
+
+analysis$log_wage_2020 <- log1p(pmax(analysis$wage_income_2020, 0))
+zvars <- c(paste0(measure_vars, "_t"), paste0(measure_vars[1:6], "_tp1"),
+  mvars, "log_wage_2020")
+for (v in zvars) {
+  analysis[[paste0(v, "_z")]] <- as.numeric(scale(analysis[[v]]))
+}
+analysis$college4_2020 <- as.integer(analysis$highest_grade_2020 >= 8)
+```
+
+The individual-measure HOME variables are sparse because questionnaires
+change with age. We retain the larger sample for the model and select one
+fully observed child only when displaying every numerical contribution.
+
+# 1. Put the entire CHS system on the page
+
+Let $k\in\{C,N\}$ index cognitive and noncognitive skills. A compact version
+of the full system is
+
+$$
+\begin{aligned}
+Z_{1,k,t,j,i}
+ &= \mu_{1,k,t,j}+\alpha_{1,k,t,j}\ln\theta_{k,t,i}
+    +\varepsilon_{1,k,t,j,i},\\
+Z_{2,t,j,i}
+ &= \mu_{2,t,j}+\alpha_{2,t,j}\ln I_{t,i}
+    +\varepsilon_{2,t,j,i},\\
+Z_{3,k,j,i}
+ &= \mu_{3,k,j}+\alpha_{3,k,j}\ln\theta_{k,P,i}
+    +\varepsilon_{3,k,j,i},\\
+Z_{4,j,i}
+ &= g_j(\theta_{C,T,i},\theta_{N,T,i},X_i)+\varepsilon_{4,j,i},\\
+\ln I_{t,i}
+ &= q_t(\ln\boldsymbol\theta_{t,i},
+         \ln\boldsymbol\theta_{P,i},Y_{t,i})+\eta_{I,t,i},\\
+\theta_{k,t+1,i}
+ &= \left[\sum_{\ell=1}^{5}\gamma_{k,t,\ell}
+ X_{k,t,\ell,i}^{\varphi_{k,t}}\right]^{1/\varphi_{k,t}}
+    \exp(\eta_{k,t+1,i}).
+\end{aligned}
+$$
+
+The five CES inputs are current cognitive skill, current noncognitive skill,
+current investment, maternal cognitive skill, and maternal noncognitive
+skill. Measurement errors, investment shocks, production shocks, and the
+initial latent-factor distribution complete the probability model.
+
+## The same equations can lead to GMM or MLE
+
+GMM selects implications of the equations, such as means, covariances, and
+orthogonality restrictions:
+
+$$
+E[m_i(\psi)]=0,
+\qquad
+\widehat\psi_{GMM}
+=\arg\min_\psi\bar m(\psi)'W\bar m(\psi).
+$$
+
+MLE specifies the joint densities and integrates over the unobserved state
+$\mathcal X_i$:
+
+$$
+L_i(\psi)=\int p(Z_i,\mathcal X_i\mid X_i;\psi)\,d\mathcal X_i,
+\qquad
+\widehat\psi_{ML}=\arg\max_\psi\sum_i\log L_i(\psi).
+$$
+
+| | GMM | MLE |
+|:--|:--|:--|
+| Uses | Selected moments implied by the system | Entire specified joint density |
+| Distribution | Does not require every density to be specified | Requires distributional assumptions or a flexible approximation |
+| Latent factors | Recovered through covariance and higher-moment restrictions | Integrated out of the likelihood |
+| Trade-off | More robust to density misspecification | Potentially more efficient, but computationally heavier |
+
+This notebook follows the MLE factorization because it makes every
+likelihood contribution visible. It is a pedagogical full-information
+representation; it should not be confused with a claim that the original
+CHS replication code is one black-box simultaneous optimizer.
+
+# 2. Measurement system: identify signal from covariance
+
+For three measures of one factor,
+
+$$
+Z_j=\lambda_j\theta+\epsilon_j,\qquad \lambda_1=1,
+$$
+
+conditional independence gives
+
+$$
+\begin{aligned}
+\operatorname{Cov}(Z_1,Z_2)&=\lambda_2\operatorname{Var}(\theta),\\
+\operatorname{Cov}(Z_1,Z_3)&=\lambda_3\operatorname{Var}(\theta),\\
+\operatorname{Cov}(Z_2,Z_3)&=\lambda_2\lambda_3
+\operatorname{Var}(\theta).
+\end{aligned}
+$$
+
+Therefore the factor variance and loadings can be written directly in terms
+of observed covariances:
+
+$$
+\operatorname{Var}(\theta)=\frac{S_{12}S_{13}}{S_{23}},\qquad
+\lambda_2=\frac{S_{23}}{S_{13}},\qquad
+\lambda_3=\frac{S_{23}}{S_{12}}.
+$$
+
+The next calculation uses actual PIAT Mathematics, PIAT Reading Recognition,
+and PPVT scores at ages 5--6.
+
+```{r}
+#| label: cognitive-covariance
+
+cognitive_t <- paste0(c("piat_math_raw_t", "piat_reading_recognition_raw_t",
+  "ppvt_raw_t"), "_z")
+S_C <- cov(analysis[cognitive_t], use = "complete.obs")
+V_C <- S_C[1, 2] * S_C[1, 3] / S_C[2, 3]
+lambda_C <- c(1, S_C[2, 3] / S_C[1, 3], S_C[2, 3] / S_C[1, 2])
+sigma_C <- sqrt(pmax(diag(S_C) - lambda_C^2 * V_C, 0.05))
+round(cbind(loading = lambda_C, error_sd = sigma_C), 3)
+```
+
+For example, the first covariance moment is
+
+$$
+m_{12}=S_{12}-\lambda_1\lambda_2\operatorname{Var}(\theta).
+$$
+
+```{r}
+#| label: one-gmm-moment
+
+# These are the three off-diagonal factor-model moments.
+g12 <- S_C[1, 2] - lambda_C[1] * lambda_C[2] * V_C
+g13 <- S_C[1, 3] - lambda_C[1] * lambda_C[3] * V_C
+g23 <- S_C[2, 3] - lambda_C[2] * lambda_C[3] * V_C
+round(c(g12 = g12, g13 = g13, g23 = g23), 8)
+```
+
+The same transparent covariance calculation is repeated for every observed
+three-measure block. This loop only avoids repeating identical algebra; it
+does not construct factor scores.
+
+```{r}
+#| label: measurement-blocks
+
+blocks <- list(
+  Ct = cognitive_t,
+  Nt = paste0(c("bpi_antisocial_raw_t", "bpi_headstrong_raw_t", "bpi_hyperactive_raw_t"), "_z"),
+  I = paste0(c("home_read_b_t", "home_read_c_t", "home_music_c_t"), "_z"),
+  PC = paste0(mvars[1:3], "_z"), PN = paste0(mvars[4:6], "_z"),
+  C1 = paste0(c("piat_math_raw_tp1", "piat_reading_recognition_raw_tp1", "ppvt_raw_tp1"), "_z"),
+  N1 = paste0(c("bpi_antisocial_raw_tp1", "bpi_headstrong_raw_tp1", "bpi_hyperactive_raw_tp1"), "_z"))
+```
+
+```{r}
+#| label: all-measurement-parameters
+
+loadings <- errors <- list()
+for (b in names(blocks)) {
+  S <- cov(analysis[blocks[[b]]], use = "complete.obs")
+  V <- S[1, 2] * S[1, 3] / S[2, 3]
+  loadings[[b]] <- c(1, S[2, 3] / S[1, 3], S[2, 3] / S[1, 2])
+  errors[[b]] <- sqrt(pmax(diag(S) - loadings[[b]]^2 * V, 0.05))
+}
+```
+
+The $0.05$ floor prevents a finite-sample Heywood variance from making this
+small teaching calculation undefined. A production application should
+estimate admissible covariance parameters directly rather than clip them.
+
+# 3. Investment and CES production densities
+
+For the numerical decomposition, choose one actual child observed in all
+displayed measures and adult outcomes.
+
+```{r}
+#| label: choose-actual-child
+
+need <- c(unlist(blocks), "log_wage_2020_z", "college4_2020", "convicted_2020")
+demo <- analysis[complete.cases(analysis[need]), ]
+r <- demo[1, ]
+cat("Displayed child ID:", r$child_id, "\n")
+cat("Fully observed candidates:", nrow(demo), "\n")
+```
+
+The following values are **one integration node**, not observed factor
+scores. The observed $Z$ values come from the selected child; the latent
+state is varied and eventually integrated out.
+
+```{r}
+#| label: one-latent-node
+
+x <- c(PC = 0.15, PN = -0.10, Ct = 0.20, Nt = -0.25,
+  I = 0.10, C1 = 0.30, N1 = -0.15)
+round(x, 2)
+```
+
+At this node, the investment equation supplies a density for latent
+investment rather than for a HOME proxy:
+
+$$
+\ln I_i=\beta_0+\beta_C\ln\theta_{C,t,i}
++\beta_N\ln\theta_{N,t,i}+\beta_{PC}\ln\theta_{C,P,i}
++\beta_{PN}\ln\theta_{N,P,i}+\eta_{I,i}.
+$$
+
+```{r}
+#| label: investment-density
+
+beta_I <- c(intercept = 0.10, Ct = 0.20, Nt = 0.10, PC = 0.15, PN = 0.10)
+mu_I <- beta_I[1] + sum(beta_I[-1] * x[c("Ct", "Nt", "PC", "PN")])
+sd_I <- 0.55
+ll_investment <- dnorm(x["I"], mean = mu_I, sd = sd_I, log = TRUE)
+round(c(observed_node = x["I"], mean = mu_I, log_density = ll_investment), 4)
+```
+
+The cognitive and noncognitive production densities evaluate how close the
+next latent skills are to the CES predictions.
+
+Recall that the entries of `x` are in logs. Define
+
+$$
+c_t=x[\texttt{Ct}],\quad n_t=x[\texttt{Nt}],\quad
+i_t=x[\texttt{I}],\quad p_C=x[\texttt{PC}],\quad
+p_N=x[\texttt{PN}].
+$$
+
+The level inputs passed to the CES function are therefore
+
+$$
+X(x)=\left(e^{c_t},e^{n_t},e^{i_t},e^{p_C},e^{p_N}\right).
+$$
+
+The conditional mean of next-period **log cognitive skill** is
+
+$$
+\begin{aligned}
+\mu_{C1}
+&=\log\!\left[
+\sum_{\ell=1}^{5}\gamma_{C,\ell}X_\ell(x)^{\phi_C}
+\right]^{1/\phi_C}\\
+&=\frac{1}{\phi_C}\log\!\left[
+\gamma_{C,1}e^{\phi_Cc_t}
++\gamma_{C,2}e^{\phi_Cn_t}
++\gamma_{C,3}e^{\phi_Ci_t}
++\gamma_{C,4}e^{\phi_Cp_C}
++\gamma_{C,5}e^{\phi_Cp_N}
+\right].
+\end{aligned}
+$$
+
+With the candidate values used below, this becomes
+
+$$
+\mu_{C1}=\frac{1}{0.35}\log\!\left[
+0.30e^{0.35c_t}+0.15e^{0.35n_t}+0.25e^{0.35i_t}
++0.20e^{0.35p_C}+0.10e^{0.35p_N}
+\right].
+$$
+
+Likewise, the conditional mean of next-period **log noncognitive skill** is
+
+$$
+\mu_{N1}=\frac{1}{0.20}\log\!\left[
+0.15e^{0.20c_t}+0.35e^{0.20n_t}+0.25e^{0.20i_t}
++0.10e^{0.20p_C}+0.15e^{0.20p_N}
+\right].
+$$
+
+The code implements these two expressions literally: `exp()` converts the
+log states to levels, the weighted power sum calculates the CES output, and
+the outer `log()` returns to the log-skill scale used by `x["C1"]` and
+`x["N1"]`.
+
+```{r}
+#| label: ces-at-node
+
+gamma_C <- c(0.30, 0.15, 0.25, 0.20, 0.10); phi_C <- 0.35
+gamma_N <- c(0.15, 0.35, 0.25, 0.10, 0.15); phi_N <- 0.20
+inputs <- exp(x[c("Ct", "Nt", "I", "PC", "PN")])
+mu_C1 <- log(sum(gamma_C * inputs^phi_C)^(1 / phi_C))
+mu_N1 <- log(sum(gamma_N * inputs^phi_N)^(1 / phi_N))
+ll_C1 <- dnorm(x["C1"], mu_C1, 0.45, log = TRUE)
+ll_N1 <- dnorm(x["N1"], mu_N1, 0.55, log = TRUE)
+```
+
+```{r}
+#| label: display-production-density
+
+production <- data.frame(
+  skill = c("Cognitive", "Noncognitive"),
+  latent_next = x[c("C1", "N1")],
+  CES_prediction = c(mu_C1, mu_N1),
+  log_density = c(ll_C1, ll_N1))
+kable(production, digits = 4)
+```
+
+# 4. One actual child's full conditional contribution
+
+For fixed $\mathcal X_i$, the joint contribution factors as
+
+$$
+\begin{aligned}
+p(Z_i,\mathcal X_i)
+={}&p(\theta_{P,i},\theta_{t,i})
+p(Z_{3,i}\mid\theta_{P,i})p(Z_{1,t,i}\mid\theta_{t,i})\\
+&\times p(I_{t,i}\mid\theta_{t,i},\theta_{P,i})
+p(Z_{2,t,i}\mid I_{t,i})\\
+&\times p(\theta_{t+1,i}\mid\theta_{t,i},I_{t,i},\theta_{P,i})
+p(Z_{1,t+1,i}\mid\theta_{t+1,i})\\
+&\times p(Z_{4,i}\mid\theta_{t+1,i}).
+\end{aligned}
+$$
+
+Each actual observed measure now contributes its own Gaussian log density.
+
+```{r}
+#| label: observed-measure-table
+
+factor <- rep(names(blocks), each = 3)
+meas <- data.frame(factor, measure = sub("_z$", "", unlist(blocks)))
+meas$z <- as.numeric(unlist(r[unlist(blocks)]))
+meas$lambda <- as.numeric(unlist(loadings[names(blocks)]))
+meas$sigma <- as.numeric(unlist(errors[names(blocks)]))
+meas$latent_node <- as.numeric(x[meas$factor])
+meas$log_density <- dnorm(meas$z, meas$lambda * meas$latent_node,
+  meas$sigma, log = TRUE)
+```
+
+```{r}
+#| label: display-measure-contributions
+
+kable(meas, digits = 3)
+```
+
+The adult block illustrates that $Z_4$ can mix continuous and discrete
+outcomes. Here four-year college and conviction use probit links, while log
+wage income uses a Gaussian density.
+
+```{r}
+#| label: adult-outcome-contribution
+
+p_college <- pnorm(-0.30 + 0.80 * x["C1"] + 0.40 * x["N1"])
+p_convict <- pnorm(-1.20 - 0.30 * x["C1"] - 0.70 * x["N1"])
+ll_college <- dbinom(r$college4_2020, 1, p_college, log = TRUE)
+ll_convict <- dbinom(r$convicted_2020, 1, p_convict, log = TRUE)
+mu_wage <- 0.40 * x["C1"] + 0.20 * x["N1"]
+ll_wage <- dnorm(r$log_wage_2020_z, mu_wage, 0.90, log = TRUE)
+ll_adult <- ll_college + ll_convict + ll_wage
+```
+
+Finally add the initial-state, measurement, investment, production, and
+adult-outcome pieces. Every displayed number is evaluated at the same latent
+node for the same actual child.
+
+```{r}
+#| label: full-node-contribution
+
+ll_initial <- sum(dnorm(x[c("PC", "PN", "Ct", "Nt")], 0, 1, log = TRUE))
+measure_by_block <- aggregate(log_density ~ factor, data = meas, sum)
+structural <- data.frame(factor = c("Initial state", "Investment function",
+  "Production: C", "Production: N", "Adult outcomes"),
+  log_density = c(ll_initial, ll_investment, ll_C1, ll_N1, ll_adult))
+contributions <- rbind(measure_by_block, structural)
+kable(contributions, digits = 4)
+```
+
+```{r}
+#| label: conditional-total
+
+conditional_log_density <- sum(contributions$log_density)
+cat("Full conditional log density at this node:",
+  round(conditional_log_density, 4), "\n")
+```
+
+# 5. CHS-style computation: integrate, then maximize
+
+The node above is not an estimate. The observed-data likelihood integrates
+over all possible latent states:
+
+$$
+L_i(\psi)=\int p(Z_i,\mathcal X_i;\psi)\,d\mathcal X_i.
+$$
+
+This integral is the central computational object. For every trial value of
+$\psi$, the estimator evaluates a large complete-data likelihood at many
+latent paths, integrates those paths for every child, sums the marginal log
+likelihoods, and then changes $\psi$ and starts again.
+
+$$
+\boxed{
+\psi
+\longrightarrow
+\left\{p(Z_i,\mathcal X_i^{(b)};\psi)\right\}_{i,b}
+\longrightarrow
+\left\{L_i(\psi)\right\}_i
+\longrightarrow
+\sum_i\log L_i(\psi)
+}
+$$
+
+The code below uses sequential Monte Carlo. Drawing from the initial,
+investment, and production densities makes the marginal likelihood the
+average of the remaining measurement and adult-outcome densities.
+
+```{r}
+#| label: draw-initial-investment
+
+set.seed(20260902); B <- 20000L
+draw <- data.frame(PC = rnorm(B), PN = rnorm(B),
+  Ct = rnorm(B), Nt = rnorm(B))
+draw$I <- beta_I[1] + beta_I["Ct"] * draw$Ct + beta_I["Nt"] * draw$Nt +
+  beta_I["PC"] * draw$PC + beta_I["PN"] * draw$PN + rnorm(B, 0, sd_I)
+```
+
+```{r}
+#| label: draw-production
+
+Xdraw <- exp(as.matrix(draw[c("Ct", "Nt", "I", "PC", "PN")]))
+index_C <- rowSums(sweep(Xdraw^phi_C, 2, gamma_C, "*"))
+index_N <- rowSums(sweep(Xdraw^phi_N, 2, gamma_N, "*"))
+draw$C1 <- log(index_C^(1 / phi_C)) + rnorm(B, 0, 0.45)
+draw$N1 <- log(index_N^(1 / phi_N)) + rnorm(B, 0, 0.55)
+```
+
+```{r}
+#| label: integrate-measurements
+
+ll_observed <- rep(0, B)
+for (j in seq_len(nrow(meas))) {
+  f <- meas$factor[j]
+  ll_observed <- ll_observed + dnorm(meas$z[j],
+    meas$lambda[j] * draw[[f]], meas$sigma[j], log = TRUE)
+}
+```
+
+```{r}
+#| label: integrate-adult-outcomes
+
+pc <- pnorm(-0.30 + 0.80 * draw$C1 + 0.40 * draw$N1)
+pv <- pnorm(-1.20 - 0.30 * draw$C1 - 0.70 * draw$N1)
+ll_observed <- ll_observed + dbinom(r$college4_2020, 1, pc, log = TRUE)
+ll_observed <- ll_observed + dbinom(r$convicted_2020, 1, pv, log = TRUE)
+ll_observed <- ll_observed + dnorm(r$log_wage_2020_z,
+  0.40 * draw$C1 + 0.20 * draw$N1, 0.90, log = TRUE)
+```
+
+```{r}
+#| label: marginal-likelihood-number
+
+# Log-mean-exp prevents numerical underflow.
+a <- max(ll_observed)
+log_L_i <- a + log(mean(exp(ll_observed - a)))
+cat("Monte Carlo marginal log likelihood:", round(log_L_i, 4), "\n")
+```
+
+For the whole sample,
+
+$$
+\ell(\psi)=\sum_{i=1}^{n}\log L_i(\psi).
+$$
+
+An optimizer changes the measurement, investment, production, shock, and
+initial-distribution parameters, recomputes all $L_i(\psi)$, and searches for
+the parameter vector that maximizes this sum. The computational difficulty
+is not any single density. It is repeatedly performing a high-dimensional
+integration for every child while respecting normalizations and parameter
+constraints.
+
+# 6. The Agostinelli--Wiswall alternative
+
+Agostinelli--Wiswall do not require an individual posterior assignment of
+$\theta_i$ inside the production-function estimator. Their sequential
+approach first links the measurement scales across ages and then substitutes
+rescaled noisy measures into the structural equations. Alternative measures
+of the same latent factor serve as instruments for the primary measure.
+
+Suppose the rescaled primary measures are
+
+$$
+\widetilde Z_{\theta,t,1}=\ln\theta_t+e_{\theta,t,1},
+\qquad
+\widetilde Z_{I,t,1}=\ln I_t+e_{I,t,1}.
+$$
+
+Substituting them into a translog technology gives
+
+$$
+\begin{aligned}
+\widetilde Z_{\theta,t+1,1}
+={}&a_t+\gamma_{1,t}\widetilde Z_{\theta,t,1}
++\gamma_{2,t}\widetilde Z_{I,t,1}\\
+&+\gamma_{3,t}\widetilde Z_{\theta,t,1}
+                    \widetilde Z_{I,t,1}+u_{t+1}.
+\end{aligned}
+$$
+
+The first skill and investment measures are endogenous regressors because
+their measurement errors enter $u_{t+1}$. Under independent measurement
+errors, second measures contain the same latent signals but are orthogonal to
+those errors. This produces IV moments such as
+
+$$
+E\!\left[
+Q_{i,t}
+\left(
+\widetilde Z_{\theta,t+1,1}
+-X_{i,t}'\gamma_t
+\right)
+\right]=0,
+$$
+
+where a simple instrument vector is
+
+$$
+Q_{i,t}=\left(
+1,
+\widetilde Z_{\theta,t,2},
+\widetilde Z_{I,t,2},
+\widetilde Z_{\theta,t,2}\widetilde Z_{I,t,2}
+\right)'.
+$$
+
+## A small IV calculation with the actual measures
+
+The following code illustrates the computational skeleton. PIAT Mathematics
+is the primary skill measure, PIAT Reading Recognition is its alternative
+measure, and two different HOME indices play the analogous investment roles.
+The same baseline transformation is applied to Mathematics at both ages so
+that growth is not mechanically removed by period-specific standardization.
+
+```{r}
+#| label: aw-linked-scale
+
+aw <- analysis
+math_mu <- mean(aw$piat_math_raw_t); math_sd <- sd(aw$piat_math_raw_t)
+aw$skill_t <- (aw$piat_math_raw_t - math_mu) / math_sd
+aw$skill_tp1 <- (aw$piat_math_raw_tp1 - math_mu) / math_sd
+aw$skill_iv <- as.numeric(scale(aw$piat_reading_recognition_raw_t))
+aw$invest_t <- as.numeric(scale(aw$home_total_z_t))
+aw$invest_iv <- as.numeric(scale(aw$home_cognitive_z_t))
+```
+
+```{r}
+#| label: aw-iv-matrices
+
+# Primary measures enter X; alternative measures enter Q.
+y_aw <- aw$skill_tp1
+X_aw <- cbind(1, aw$skill_t, aw$invest_t, aw$skill_t * aw$invest_t)
+Q_aw <- cbind(1, aw$skill_iv, aw$invest_iv, aw$skill_iv * aw$invest_iv)
+A_aw <- crossprod(Q_aw, X_aw)
+b_aw <- crossprod(Q_aw, y_aw)
+W_aw <- solve(crossprod(Q_aw))
+gamma_aw <- solve(t(A_aw) %*% W_aw %*% A_aw,
+  t(A_aw) %*% W_aw %*% b_aw)
+```
+
+```{r}
+#| label: aw-iv-result
+
+aw_result <- data.frame(
+  parameter = c("Intercept", "Skill", "Investment", "Skill x Investment"),
+  estimate = as.numeric(gamma_aw))
+kable(aw_result, digits = 3)
+```
+
+This numerical result is not an AW replication. It illustrates the estimator's
+logic with our extract. A proper application must estimate and test the
+age-invariant measurement restrictions, use the paper's full instrument set,
+allow for missing observations, and address economic endogeneity separately
+from measurement error.
+
+## What changes computationally?
+
+| | CHS-style latent likelihood | Agostinelli--Wiswall |
+|:--|:--|:--|
+| Individual skill | Remains latent inside $L_i(\psi)$ | Replaced by a rescaled noisy measure |
+| Measurement error | Handled by integrating the latent state | Handled with alternative measures as IVs |
+| Production estimation | Transition density inside a large likelihood | Sequential IV/GMM production equation |
+| Main computation | High-dimensional integration for each child | Matrix moments and recursive IV steps |
+| Essential scale restriction | Factor normalization | Age-invariant measures linking periods |
+
+The contrast is therefore not ``latent skills'' versus ``observed skills.''
+Both approaches treat skills as latent. The distinction is whether the
+estimator integrates latent histories or eliminates them from the estimating
+equations using transformed measures and moment restrictions.
+
+## What this notebook has and has not done
+
+- It uses actual NLSY/CYA child, HOME, maternal, schooling, wage, and
+  conviction observations.
+- It displays every density block in a CHS-style likelihood and integrates
+  the latent state for one actual child.
+- It does not pretend that standardized observed measures are latent-factor
+  scores.
+- It does not yet reproduce the full CHS estimates. Full replication requires
+  all periods, CHS's distributional specification, missing-data treatment,
+  anchoring choices, endogeneity treatment, and constrained optimization.
+- It now shows the computational skeleton of the Agostinelli--Wiswall
+  sequential IV alternative, but does not claim to reproduce their estimates.
