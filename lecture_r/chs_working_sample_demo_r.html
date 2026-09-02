@@ -181,10 +181,18 @@ window.Quarto = {
 <p>This notebook no longer generates artificial test scores, HOME measures, or adult outcomes. It loads the local extract of white first-born children and uses their actual observations. Latent skills and investment are still unobserved; that is precisely why they must be integrated out.</p>
 <div class="cell">
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Load the working-sample flags and the three observed-data files.</span></span>
-<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>child <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"data/chs_white_firstborn_appendix_a9_child.csv"</span>)</span>
-<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>period <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"data/chs_white_firstborn_appendix_a9_period.csv"</span>)</span>
-<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>measure <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"data/chs_white_firstborn_measurements_long.csv"</span>)</span>
-<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a>adult <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"data/chs_adult_outcomes_2020.csv"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a><span class="co"># child: one row per child; identifies the white first-born working sample and records whether the child and mother satisfy the Appendix A9 measurement requirements.</span></span>
+<span id="cb1-4"><a href="#cb1-4" aria-hidden="true" tabindex="-1"></a>child <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"data/chs_white_firstborn_appendix_a9_child.csv"</span>)</span>
+<span id="cb1-5"><a href="#cb1-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-6"><a href="#cb1-6" aria-hidden="true" tabindex="-1"></a><span class="co"># period: one row per child and CHS age period; contains the representative A9 cognitive, noncognitive, and investment measures, demographics, and maternal skill measures.</span></span>
+<span id="cb1-7"><a href="#cb1-7" aria-hidden="true" tabindex="-1"></a>period <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"data/chs_white_firstborn_appendix_a9_period.csv"</span>)</span>
+<span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="co"># measure: one row per child-assessment wave; contains the underlying PIAT, PPVT, BPI, and HOME observations used to construct the measurement blocks at each age.</span></span>
+<span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a>measure <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"data/chs_white_firstborn_measurements_long.csv"</span>)</span>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="co"># adult: one row per child; contains the 2020 schooling, wage-income, and conviction outcomes used to anchor final-period latent skills.</span></span>
+<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a>adult <span class="ot">&lt;-</span> <span class="fu">read.csv</span>(<span class="st">"data/chs_adult_outcomes_2020.csv"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>The Appendix A9 rule selects children observed in all three A9 blocks and whose maternal measures are complete.</p>
 <div class="cell">
@@ -241,13 +249,15 @@ window.Quarto = {
 </div>
 <p>Standardization only changes the units of each observed variable. It does not average measures or replace the latent factors.</p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a>analysis<span class="sc">$</span>log_wage_2020 <span class="ot">&lt;-</span> <span class="fu">log1p</span>(<span class="fu">pmax</span>(analysis<span class="sc">$</span>wage_income_2020, <span class="dv">0</span>))</span>
-<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a>zvars <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fu">paste0</span>(measure_vars, <span class="st">"_t"</span>), <span class="fu">paste0</span>(measure_vars[<span class="dv">1</span><span class="sc">:</span><span class="dv">6</span>], <span class="st">"_tp1"</span>),</span>
-<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>  mvars, <span class="st">"log_wage_2020"</span>)</span>
-<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (v <span class="cf">in</span> zvars) {</span>
-<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>  analysis[[<span class="fu">paste0</span>(v, <span class="st">"_z"</span>)]] <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">scale</span>(analysis[[v]]))</span>
-<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>analysis<span class="sc">$</span>college4_2020 <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(analysis<span class="sc">$</span>highest_grade_2020 <span class="sc">&gt;=</span> <span class="dv">8</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># income should be greater than 0</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>analysis<span class="sc">$</span>log_wage_2020 <span class="ot">&lt;-</span> <span class="fu">log1p</span>(<span class="fu">pmax</span>(analysis<span class="sc">$</span>wage_income_2020, <span class="dv">0</span>))</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>zvars <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="fu">paste0</span>(measure_vars, <span class="st">"_t"</span>), <span class="fu">paste0</span>(measure_vars[<span class="dv">1</span><span class="sc">:</span><span class="dv">6</span>], <span class="st">"_tp1"</span>),</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>  mvars, <span class="st">"log_wage_2020"</span>)</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a><span class="cf">for</span> (v <span class="cf">in</span> zvars) {</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>  analysis[[<span class="fu">paste0</span>(v, <span class="st">"_z"</span>)]] <span class="ot">&lt;-</span> <span class="fu">as.numeric</span>(<span class="fu">scale</span>(analysis[[v]]))</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>analysis<span class="sc">$</span>college4_2020 <span class="ot">&lt;-</span> <span class="fu">as.integer</span>(analysis<span class="sc">$</span>highest_grade_2020 <span class="sc">&gt;=</span> <span class="dv">8</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </div>
 <p>The individual-measure HOME variables are sparse because questionnaires change with age. We retain the larger sample for the model and select one fully observed child only when displaying every numerical contribution.</p>
 </section>
@@ -277,8 +287,8 @@ X_{k,t,\ell,i}^{\varphi_{k,t}}\right]^{1/\varphi_{k,t}}
 \end{aligned}
 </span></p>
 <p>The five CES inputs are current cognitive skill, current noncognitive skill, current investment, maternal cognitive skill, and maternal noncognitive skill. Measurement errors, investment shocks, production shocks, and the initial latent-factor distribution complete the probability model.</p>
-<section id="the-same-equations-can-lead-to-gmm-or-mle" class="level2">
-<h2 class="anchored" data-anchor-id="the-same-equations-can-lead-to-gmm-or-mle">The same equations can lead to GMM or MLE</h2>
+<section id="gmm-vs-mle-or-even-gls" class="level2">
+<h2 class="anchored" data-anchor-id="gmm-vs-mle-or-even-gls">GMM vs MLE (or even GLS!)</h2>
 <p>GMM selects implications of the equations, such as means, covariances, and orthogonality restrictions:</p>
 <p><span class="math display">
 E[m_i(\psi)]=0,
@@ -437,14 +447,25 @@ m_{12}=S_{12}-\lambda_1\lambda_2\operatorname{Var}(\theta).
 +\beta_{PN}\ln\theta_{N,P,i}+\eta_{I,i}.
 </span></p>
 <div class="cell">
-<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>beta_I <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="at">intercept =</span> <span class="fl">0.10</span>, <span class="at">Ct =</span> <span class="fl">0.20</span>, <span class="at">Nt =</span> <span class="fl">0.10</span>, <span class="at">PC =</span> <span class="fl">0.15</span>, <span class="at">PN =</span> <span class="fl">0.10</span>)</span>
-<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>mu_I <span class="ot">&lt;-</span> beta_I[<span class="dv">1</span>] <span class="sc">+</span> <span class="fu">sum</span>(beta_I[<span class="sc">-</span><span class="dv">1</span>] <span class="sc">*</span> x[<span class="fu">c</span>(<span class="st">"Ct"</span>, <span class="st">"Nt"</span>, <span class="st">"PC"</span>, <span class="st">"PN"</span>)])</span>
-<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>sd_I <span class="ot">&lt;-</span> <span class="fl">0.55</span></span>
-<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>ll_investment <span class="ot">&lt;-</span> <span class="fu">dnorm</span>(x[<span class="st">"I"</span>], <span class="at">mean =</span> mu_I, <span class="at">sd =</span> sd_I, <span class="at">log =</span> <span class="cn">TRUE</span>)</span>
-<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">c</span>(<span class="at">observed_node =</span> x[<span class="st">"I"</span>], <span class="at">mean =</span> mu_I, <span class="at">log_density =</span> ll_investment), <span class="dv">4</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Candidate coefficients of the investment function (fixed here, estimated in a full MLE).</span></span>
+<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a>beta_I <span class="ot">&lt;-</span> <span class="fu">c</span>(<span class="at">intercept =</span> <span class="fl">0.10</span>, <span class="at">Ct =</span> <span class="fl">0.20</span>, <span class="at">Nt =</span> <span class="fl">0.10</span>, <span class="at">PC =</span> <span class="fl">0.15</span>, <span class="at">PN =</span> <span class="fl">0.10</span>)</span>
+<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Conditional mean of latent log investment at the current integration node.</span></span>
+<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>mu_I <span class="ot">&lt;-</span> beta_I[<span class="dv">1</span>] <span class="sc">+</span> <span class="fu">sum</span>(beta_I[<span class="sc">-</span><span class="dv">1</span>] <span class="sc">*</span> x[<span class="fu">c</span>(<span class="st">"Ct"</span>, <span class="st">"Nt"</span>, <span class="st">"PC"</span>, <span class="st">"PN"</span>)])</span>
+<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Standard deviation of the investment shock eta_I.</span></span>
+<span id="cb23-8"><a href="#cb23-8" aria-hidden="true" tabindex="-1"></a>sd_I <span class="ot">&lt;-</span> <span class="fl">0.55</span></span>
+<span id="cb23-9"><a href="#cb23-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-10"><a href="#cb23-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Evaluate log p(I | Ct, Nt, PC, PN) at the candidate latent-investment node.</span></span>
+<span id="cb23-11"><a href="#cb23-11" aria-hidden="true" tabindex="-1"></a>ll_investment <span class="ot">&lt;-</span> <span class="fu">dnorm</span>(x[<span class="st">"I"</span>], <span class="at">mean =</span> mu_I, <span class="at">sd =</span> sd_I, <span class="at">log =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb23-12"><a href="#cb23-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb23-13"><a href="#cb23-13" aria-hidden="true" tabindex="-1"></a><span class="fu">round</span>(<span class="fu">c</span>(<span class="at">latent_I_node =</span> x[<span class="st">"I"</span>], <span class="at">conditional_mean =</span> mu_I,</span>
+<span id="cb23-14"><a href="#cb23-14" aria-hidden="true" tabindex="-1"></a>        <span class="at">log_density =</span> ll_investment), <span class="dv">4</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>observed_node.I  mean.intercept   log_density.I 
-         0.1000          0.1275         -0.3224 </code></pre>
+<pre><code>           latent_I_node.I conditional_mean.intercept 
+                    0.1000                     0.1275 
+             log_density.I 
+                   -0.3224 </code></pre>
 </div>
 </div>
 <p>The cognitive and noncognitive production densities evaluate how close the next latent skills are to the CES predictions.</p>
@@ -964,6 +985,61 @@ L_i(\psi)=\int p(Z_i,\mathcal X_i;\psi)\,d\mathcal X_i.
 \widetilde Z_{\theta,t,1}=\ln\theta_t+e_{\theta,t,1},
 \qquad
 \widetilde Z_{I,t,1}=\ln I_t+e_{I,t,1}.
+</span></p>
+<p>Start from the latent translog technology,</p>
+<p><span class="math display">
+\ln\theta_{t+1}
+=
+a_t+\gamma_{1,t}\ln\theta_t
++\gamma_{2,t}\ln I_t
++\gamma_{3,t}\ln\theta_t\ln I_t
++\eta_{\theta,t+1}.
+</span></p>
+<p>Because</p>
+<p><span class="math display">
+\ln\theta_t=\widetilde Z_{\theta,t,1}-e_{\theta,t,1},
+\qquad
+\ln I_t=\widetilde Z_{I,t,1}-e_{I,t,1},
+\qquad
+\widetilde Z_{\theta,t+1,1}
+=\ln\theta_{t+1}+e_{\theta,t+1,1},
+</span></p>
+<p>direct substitution gives</p>
+<p><span class="math display">
+\begin{aligned}
+\widetilde Z_{\theta,t+1,1}
+={}&amp;a_t
++\gamma_{1,t}\left(\widetilde Z_{\theta,t,1}-e_{\theta,t,1}\right)
++\gamma_{2,t}\left(\widetilde Z_{I,t,1}-e_{I,t,1}\right)\\
+&amp;+\gamma_{3,t}
+\left(\widetilde Z_{\theta,t,1}-e_{\theta,t,1}\right)
+\left(\widetilde Z_{I,t,1}-e_{I,t,1}\right)
++\eta_{\theta,t+1}+e_{\theta,t+1,1}.
+\end{aligned}
+</span></p>
+<p>Collecting all terms involving measurement errors into the composite error (u_{t+1}) gives</p>
+<p><span class="math display">
+\begin{aligned}
+\widetilde Z_{\theta,t+1,1}
+={}&amp;a_t+\gamma_{1,t}\widetilde Z_{\theta,t,1}
++\gamma_{2,t}\widetilde Z_{I,t,1}\\
+&amp;+\gamma_{3,t}\widetilde Z_{\theta,t,1}
+\widetilde Z_{I,t,1}+u_{t+1},
+\end{aligned}
+</span></p>
+<p>where</p>
+<p><span class="math display">
+\begin{aligned}
+u_{t+1}
+={}&amp;\eta_{\theta,t+1}+e_{\theta,t+1,1}
+-\gamma_{1,t}e_{\theta,t,1}
+-\gamma_{2,t}e_{I,t,1}\\
+&amp;-\gamma_{3,t}\left(
+\widetilde Z_{\theta,t,1}e_{I,t,1}
++\widetilde Z_{I,t,1}e_{\theta,t,1}
+-e_{\theta,t,1}e_{I,t,1}
+\right).
+\end{aligned}
 </span></p>
 <p>Substituting them into a translog technology gives</p>
 <p><span class="math display">
